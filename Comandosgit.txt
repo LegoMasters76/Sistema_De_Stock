@@ -1,0 +1,23 @@
+Para modificar
+
+
+git add.
+git commit -m "descripcion del cambio"
+git push
+
+
+que hace cada cosa:
+
+🟢 git add .
+
+Prepara los archivos modificados para guardarlos.
+
+🟢 git commit -m "mensaje"
+
+Guarda una “foto” del estado actual del proyecto.
+
+👉 El mensaje tiene que explicar qué hiciste.
+
+🟢 git push
+
+Sube esos cambios a GitHub
