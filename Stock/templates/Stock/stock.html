@@ -1,0 +1,87 @@
+{% extends "base.html" %} {% block content %}
+
+<div class="d-flex justify-content-between mb-3">
+
+    <h2>Productos</h2>
+
+    <a href="{% url 'agregar_producto' %}" class="btn btn-success">
+Agregar Producto
+</a>
+
+</div>
+
+<div class="container mt-4">
+
+    <h2>Stock de Productos</h2>
+
+    <form method="GET" class="row mb-3">
+
+        <div class="col-md-6">
+
+            <div class="input-group">
+
+                <input type="text" name="nombre" class="form-control" placeholder="Buscar producto..." value="{{ request.GET.nombre }}">
+
+                <button type="submit" class="btn btn-primary">
+Buscar
+</button>
+
+                <a href="{% url 'stock' %}" class="btn btn-secondary">
+Limpiar
+</a>
+
+            </div>
+
+        </div>
+
+    </form>
+
+    <table class="table table-striped table-hover">
+
+        <thead class="table-dark">
+
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Precio</th>
+                <th>Stock</th>
+                <th>Categoría</th>
+                <th>Acciones</th>
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            {% for producto in productos %}
+
+            <tr>
+                <td>{{ producto.id }}</td>
+                <td>{{ producto.nombre }}</td>
+                <td>${{ producto.precio }}</td>
+                <td>{{ producto.stock }}</td>
+                <td>{{ producto.categoria }}</td>
+
+                <td>
+
+                    <a href="{% url 'editar_producto' producto.id %}" class="btn btn-sm btn-warning">
+Editar
+</a>
+
+                    <a href="{% url 'eliminar_producto' producto.id %}" class="btn btn-sm btn-danger" onclick="return confirm('¿Seguro que querés eliminar este producto?')">
+Eliminar
+</a>
+
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+{% endblock %}

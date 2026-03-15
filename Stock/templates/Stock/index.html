@@ -1,0 +1,17 @@
+{% extends "base.html" %} {% block content %}
+
+<div class="text-center">
+
+    <h1 class="display-4">Sistema de Stock</h1>
+
+    <p class="lead">
+        Bienvenido al sistema de gestión de inventario
+    </p>
+
+    <a href="{% url 'stock' %}" class="btn btn-primary btn-lg">
+Ver Stock
+</a>
+
+</div>
+
+{% endblock %}
