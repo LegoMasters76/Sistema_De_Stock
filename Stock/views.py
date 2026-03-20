@@ -7,7 +7,15 @@ from django.contrib import messages
 
 
 def index(request):
-    context = {"mensaje": "Bienvenido al sistema de stock"}
+    
+    productos = Producto.objects.all()
+
+    context = {
+        "total_productos": productos.count(),
+        "bajo_stock": productos.filter(stock__lte=5, stock__gt=0).count(),
+        "sin_stock": productos.filter(stock=0).count(),
+    }
+
     return render(request, "Stock/index.html", context)
 
 

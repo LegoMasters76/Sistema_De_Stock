@@ -1,17 +1,42 @@
 {% extends "base.html" %} {% block content %}
 
-<div class="text-center">
+<h1 class="mb-4">Panel de Control</h1>
 
-    <h1 class="display-4">Sistema de Stock</h1>
+<div class="row">
 
-    <p class="lead">
-        Bienvenido al sistema de gestión de inventario
-    </p>
+    <div class="col-md-4">
+        <div class="card shadow text-center">
+            <div class="card-body">
+                <h5>Total Productos</h5>
+                <p class="display-6">{{ total_productos }}</p>
+            </div>
+        </div>
+    </div>
 
+    <div class="col-md-4">
+        <div class="card shadow text-center">
+            <div class="card-body">
+                <h5>Bajo Stock</h5>
+                <p class="display-6 text-warning">{{ bajo_stock }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow text-center">
+            <div class="card-body">
+                <h5>Sin Stock</h5>
+                <p class="display-6 text-danger">{{ sin_stock }}</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="mt-4 text-center">
     <a href="{% url 'stock' %}" class="btn btn-primary btn-lg">
-Ver Stock
-</a>
-
+        Ver Stock
+    </a>
 </div>
 
 {% endblock %}
