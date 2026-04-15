@@ -68,7 +68,7 @@ def agregar_categoria(request):
         form = CategoriaForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('index') 
+            return redirect('inicio') 
     else:
         form = CategoriaForm()
     return render(request, "Stock/agregar_categoria.html", {"form": form})
@@ -79,7 +79,7 @@ def agregar_proveedor(request):
         form = ProveedorForm(request.POST)
         if form.is_valid():
             form.save()
-            return redirect('index')
+            return redirect('inicio')
     else:
         form = ProveedorForm()
     return render(request, "Stock/agregar_proveedor.html", {"form": form})
