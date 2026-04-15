@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2><i class="bi bi-person-gear"></i> Editar Mi Perfil</h2>
+            <a href="{% url 'perfil' %}" class="btn btn-outline-secondary btn-sm">Cancelar</a>
+        </div>
+        
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            
+            <div class="card p-4 shadow-sm">
+                <div class="row g-3">
+                    <div class="col-md-6">{{ form.first_name.label_tag }} {{ form.first_name }}</div>
+                    <div class="col-md-6">{{ form.last_name.label_tag }} {{ form.last_name }}</div>
+                    <div class="col-12">{{ form.email.label_tag }} {{ form.email }}</div>
+                    <div class="col-12">{{ form.avatar.label_tag }} {{ form.avatar }}</div>
+                    <div class="col-12">{{ form.bio.label_tag }} {{ form.bio }}</div>
+                    <div class="col-md-4">{{ form.pais.label_tag }} {{ form.pais }}</div>
+                    <div class="col-md-4">{{ form.dni.label_tag }} {{ form.dni }}</div>
+                    <div class="col-md-4">{{ form.direccion.label_tag }} {{ form.direccion }}</div>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary w-100">Guardar Cambios</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    form input, form select, form textarea {
+        display: block;
+        width: 100%;
+        padding: 0.375rem 0.75rem;
+        font-size: 1rem;
+        font-weight: 400;
+        line-height: 1.5;
+        color: #212529;
+        background-color: #fff;
+        background-clip: padding-box;
+        border: 1px solid #ced4da;
+        border-radius: 0.375rem;
+    }
+</style>
+{% endblock %}

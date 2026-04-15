@@ -1,7 +1,7 @@
 Para modificar
 
 
-git add (nombre del archivo a agregar)
+git add (nombre del archivo a agregar) ("." si queres agregar todo)
 git commit -m "descripcion del cambio"
 git push
 
@@ -19,5 +19,5 @@ Guarda una “foto” del estado actual del proyecto.
 👉 El mensaje tiene que explicar qué hiciste.
 
 🟢 git push
-
+    
 Sube esos cambios a GitHub

@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- HEADER / HEADER DEL CV -->
+            <div class="card shadow-lg border-0 mb-4 overflow-hidden">
+                <div class="row g-0">
+                    <div class="col-md-4 bg-dark d-flex align-items-center justify-content-center p-4 text-white text-center">
+                        <div>
+                            <div class="mb-3">
+                                {% if "/static/img/Foto_Renzo.jpeg" %}
+                                    <img src="{% static 'img/Foto_Renzo.jpeg' %}" class="img-fluid rounded-circle border border-4 border-primary shadow" style="width: 200px; height: 200px; object-fit: cover;">
+                                {% else %}
+                                    <i class="bi bi-person-circle" style="font-size: 7rem; color: #0d6efd;"></i>
+                                {% endif %}
+                            </div>
+                            <h2 class="fw-bold">Renzo Mandarini</h2>
+                            <p class="text-info mb-1">Estudiante de Lic. en Sistemas</p>
+                            <p class="small text-white-50">renzo_giganter@hotmail.com</p>
+                            <p class="small text-white-50"><i class="bi bi-telephone"></i> 2477210044</p>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="card-body p-4">
+                            <h4 class="border-bottom pb-2 mb-3"><i class="bi bi-person-lines-fill"></i> Resumen Profesional</h4>
+                            <p class="text-secondary" style="text-align: justify;">
+                                Soy una persona responsable y proactiva, con experiencia en distintos entornos laborales que me ayudaron a desarrollar habilidades de organización, trabajo en equipo y resolución de problemas. Actualmente estoy cursando el 4to año de la <strong>Licenciatura en Sistemas en la U.N.N.O.B.A.</strong>, con el objetivo de profundizar mis conocimientos en programación y aplicarlos en proyectos reales para seguir creciendo en el área de la informática.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CUERPO DEL CV -->
+            <div class="row g-4">
+                <!-- COLUMNA IZQUIERDA: EXPERIENCIA -->
+                <div class="col-md-7">
+                    <div class="card shadow-sm border-0 p-4 mb-4" style="height: 100%;">
+                        <h4 class="border-bottom pb-2 mb-4 text-primary"><i class="bi bi-briefcase"></i> Experiencia Laboral</h4>
+                        
+                        <div class="mb-4">
+                            <h6 class="fw-bold mb-0">Cajero - Repositor - Seguridad - Mantenimiento</h6>
+                            <small class="text-muted">Supermercado Market 24 horas | 2024 - 2025</small>
+                            <p class="small mt-1">Gestión integral de local en turno noche, atención al cliente y control de stock.</p>
+                        </div>
+
+                        <div class="mb-4">
+                            <h6 class="fw-bold mb-0">Limpiador de Piletas</h6>
+                            <small class="text-muted">Particular | Presente</small>
+                            <p class="small mt-1">Mantenimiento y cuidado autónomo de piscinas en casas particulares.</p>
+                        </div>
+
+                        <div class="mb-4">
+                            <h6 class="fw-bold mb-0">Empleado de Chapa y Pintura</h6>
+                            <small class="text-muted">Taller Santiago Hernandez | 2022</small>
+                        </div>
+
+                        <div class="mb-4">
+                            <h6 class="fw-bold mb-0">Delivery</h6>
+                            <small class="text-muted">El Terco Bebidas | 2021</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- COLUMNA DERECHA: EDUCACIÓN Y SKILLS -->
+                <div class="col-md-5">
+                    <!-- EDUCACIÓN -->
+                    <div class="card shadow-sm border-0 p-4 mb-4">
+                        <h4 class="border-bottom pb-2 mb-3 text-primary"><i class="bi bi-mortarboard"></i> Educación</h4>
+                        <div class="mb-3">
+                            <h6 class="fw-bold mb-0">Licenciatura en Sistemas</h6>
+                            <small class="text-muted">U.N.N.O.B.A (En curso, 4to año)</small>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0">Secundario Completo</h6>
+                            <small class="text-muted">Escuela Normal Superior n°7 (2021)</small>
+                        </div>
+                    </div>
+
+                    <!-- SKILLS -->
+                    <div class="card shadow-sm border-0 p-4">
+                        <h4 class="border-bottom pb-2 mb-3 text-primary"><i class="bi bi-stars"></i> Habilidades Técnicas</h4>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="badge bg-primary px-3 py-2">Python</span>
+                            <span class="badge bg-primary px-3 py-2">Java</span>
+                            <span class="badge bg-primary px-3 py-2">Javascript</span>
+                            <span class="badge bg-secondary px-3 py-2">Excel</span>
+                            <span class="badge bg-secondary px-3 py-2">Word</span>
+                            <span class="badge bg-dark px-3 py-2">Inglés</span>
+                            <span class="badge bg-dark px-3 py-2">Español</span>
+                        </div>
+                    </div>
+
+                    <!-- BOTONES ACCIÓN -->
+                    <div class="mt-4 d-grid gap-2">
+                        <a href="{% url 'inicio' %}" class="btn btn-outline-primary"><i class="bi bi-house"></i> Volver al Inicio</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

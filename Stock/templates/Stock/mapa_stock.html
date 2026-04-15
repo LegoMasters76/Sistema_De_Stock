@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* Eliminamos scroll global para que parezca una App */
+    body { overflow: hidden; } 
+    
+    .main-wrapper {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 40px); /* Ajuste para que no sobre nada al final */
+        width: 100%;
+    }
+
+    #canvas-container {
+        flex-grow: 1;
+        width: 100%;
+        background-color: #ffffff; /* El fondo es blanco (el depósito) */
+        border: 4px solid #000000; /* Estas son las paredes del depósito */
+        border-radius: 4px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .sticky-menu {
+        padding-bottom: 5px;
+    }
+</style>
+
+<div class="main-wrapper">
+    <div class="sticky-menu">
+        <div class="d-flex justify-content-between align-items-center mb-1">
+            <h5 class="mb-0"><i class="bi bi-map"></i> Mapa de Depósito</h5>
+            <button id="btnGuardar" class="btn btn-primary btn-sm shadow-sm">
+                <i class="bi bi-cloud-arrow-up"></i> GUARDAR MAPA
+            </button>
+        </div>
+
+        <div class="card shadow-sm mb-1">
+            <div class="card-body p-2 d-flex gap-2 align-items-center bg-light">
+                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#modalEstanteria">
+                    <i class="bi bi-plus-circle"></i> Nueva Estantería
+                </button>
+                <button id="btnEliminar" class="btn btn-outline-danger btn-sm" disabled>
+                    <i class="bi bi-trash"></i> Eliminar
+                </button>
+                <div class="vr"></div>
+                <div id="statusLabel" class="small text-muted">Haz clic en un estante para moverlo</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- El contenedor ahora ES el depósito -->
+    <div id="canvas-container">
+        <div id="container"></div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalEstanteria" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5>Nueva Estantería</h5></div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Nombre/Código</label>
+                    <input type="text" id="m_nombre" class="form-control" placeholder="A1">
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-3"><label>Ancho (m)</label><input type="number" id="m_ancho" class="form-control" value="3" step="0.1"></div>
+                    <div class="col-6 mb-3"><label>Largo (m)</label><input type="number" id="m_largo" class="form-control" value="1" step="0.1"></div>
+                </div>
+                <div class="mb-3">
+                    <label>Niveles</label>
+                    <input type="number" id="m_niveles" class="form-control" value="3">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" id="confirmarCrear" class="btn btn-primary">Crear</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/konva@9/konva.min.js"></script>
+
+<script>
+let stage, layer, tr;
+let selectedShape = null;
+let PPM = 1; 
+let warehouseMeters = { ancho: 30, largo: 20 };
+const csrftoken = "{{ csrf_token }}";
+
+document.addEventListener('DOMContentLoaded', function() {
+    const contenedor = document.getElementById('canvas-container');
+    
+    // Leemos los metros de la configuración
+    warehouseMeters.ancho = parseFloat("{{ config.ancho_px|default:30 }}");
+    warehouseMeters.largo = parseFloat("{{ config.largo_px|default:20 }}");
+    
+    function redimensionar() {
+        const width = contenedor.offsetWidth;
+        const height = contenedor.offsetHeight;
+
+        // Calculamos escala para que los metros se adapten al 100% del contenedor
+        const escalaX = width / warehouseMeters.ancho;
+        const escalaY = height / warehouseMeters.largo;
+        
+        // Usamos la escala que mejor ajuste sin deformar
+        PPM = Math.min(escalaX, escalaY);
+
+        stage.width(width);
+        stage.height(height);
+
+        // Reposicionar estanterías
+        stage.find('.estante').forEach(e => {
+            const info = e.getAttr('original_m');
+            if (info) {
+                e.x(info.x * PPM);
+                e.y(info.y * PPM);
+                const r = e.findOne('Rect');
+                r.width(info.ancho * PPM);
+                r.height(info.largo * PPM);
+            }
+        });
+        layer.draw();
+    }
+
+    stage = new Konva.Stage({
+        container: 'container',
+        width: contenedor.offsetWidth, 
+        height: contenedor.offsetHeight
+    });
+
+    layer = new Konva.Layer();
+    stage.add(layer);
+
+    tr = new Konva.Transformer({
+        rotateEnabled: false, 
+        enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
+        padding: 5
+    });
+    layer.add(tr);
+
+    redimensionar();
+    window.addEventListener('resize', redimensionar);
+
+    cargarEstanterias();
+
+    stage.on('click tap', (e) => {
+        if (e.target === stage) { deseleccionar(); return; }
+    });
+
+    document.getElementById('confirmarCrear').onclick = () => {
+        const data = {
+            nombre: document.getElementById('m_nombre').value || "S/N",
+            ancho: parseFloat(document.getElementById('m_ancho').value) || 3,
+            largo: parseFloat(document.getElementById('m_largo').value) || 1,
+            niveles: parseInt(document.getElementById('m_niveles').value) || 1,
+            x: 0, y: 0
+        };
+        dibujarEstanteria(data);
+        bootstrap.Modal.getInstance(document.getElementById('modalEstanteria')).hide();
+    };
+
+    document.getElementById('btnEliminar').onclick = () => {
+        if (selectedShape) {
+            selectedShape.destroy();
+            deseleccionar();
+            layer.draw();
+        }
+    };
+
+    document.getElementById('btnGuardar').onclick = guardarTodo;
+});
+
+function dibujarEstanteria(data) {
+    const group = new Konva.Group({
+        x: data.x * PPM,
+        y: data.y * PPM,
+        draggable: true,
+        name: 'estante',
+        id: data.id ? data.id.toString() : 'new-' + Date.now()
+    });
+
+    group.setAttr('original_m', {
+        x: data.x, y: data.y, 
+        ancho: data.ancho, largo: data.largo
+    });
+
+    const rect = new Konva.Rect({
+        width: data.ancho * PPM,
+        height: data.largo * PPM,
+        fill: '#3498db',
+        stroke: '#2c3e50',
+        strokeWidth: 2,
+        cornerRadius: 4
+    });
+
+    group.dragBoundFunc(function(pos) {
+        // Los límites son ahora los bordes del escenario
+        const maxX = stage.width() - (rect.width() * group.scaleX());
+        const maxY = stage.height() - (rect.height() * group.scaleY());
+        return {
+            x: Math.max(0, Math.min(pos.x, maxX)),
+            y: Math.max(0, Math.min(pos.y, maxY))
+        };
+    });
+
+    group.setAttr('info', { nombre: data.nombre, niveles: data.niveles });
+
+    const label = new Konva.Text({
+        text: `${data.nombre}`,
+        fontSize: 11,
+        fontStyle: 'bold',
+        fill: 'white',
+        width: data.ancho * PPM,
+        padding: 5,
+        align: 'center'
+    });
+
+    group.add(rect, label);
+    group.on('click', () => seleccionar(group));
+    group.on('dragmove', () => { 
+        if(selectedShape === group) tr.forceUpdate();
+        const info = group.getAttr('original_m');
+        info.x = group.x() / PPM;
+        info.y = group.y() / PPM;
+    });
+
+    layer.add(group);
+    layer.draw();
+}
+
+function seleccionar(node) {
+    selectedShape = node;
+    tr.nodes([node]);
+    document.getElementById('btnEliminar').disabled = false;
+    document.getElementById('statusLabel').innerHTML = `<strong>Seleccionado: ${node.getAttr('info').nombre}</strong>`;
+    layer.draw();
+}
+
+function deseleccionar() {
+    selectedShape = null;
+    tr.nodes([]);
+    document.getElementById('btnEliminar').disabled = true;
+    document.getElementById('statusLabel').innerText = "Haz clic en un estante para seleccionarlo";
+    layer.draw();
+}
+
+function guardarTodo() {
+    const estantes = stage.find('.estante').map(e => {
+        const rect = e.findOne('Rect');
+        return {
+            id: e.id(),
+            nombre: e.getAttr('info').nombre,
+            niveles: e.getAttr('info').niveles,
+            x: e.x() / PPM,
+            y: e.y() / PPM,
+            ancho: (rect.width() * e.scaleX()) / PPM,
+            largo: (rect.height() * e.scaleY()) / PPM
+        };
+    });
+
+    fetch('/guardar-estanteria/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+        body: JSON.stringify({ estanterias: estantes })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.status === 'ok') alert("¡Mapa guardado con éxito!");
+    });
+}
+
+function cargarEstanterias() {
+    const iniciales = {{ estanterias_json|safe|default:"[]" }}; 
+    if (iniciales && iniciales.length > 0) {
+        iniciales.forEach(e => dibujarEstanteria(e));
+    }
+}
+</script>
+{% endblock %}

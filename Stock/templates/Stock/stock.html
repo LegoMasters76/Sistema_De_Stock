@@ -59,10 +59,19 @@ Limpiar
                 <td>{{ producto.id }}</td>
                 <td>{{ producto.nombre }}</td>
                 <td>${{ producto.precio }}</td>
-                <td>{{ producto.stock }}</td>
+                <td class="{% if producto.stock <= producto.stock_minimo %}text-danger fw-bold{% endif %}">
+                    {{ producto.stock }}
+                    {% if producto.stock <= producto.stock_minimo %}
+                        <i class="bi bi-exclamation-triangle-fill" title="Bajo stock"></i>
+                    {% endif %}
+                </td>
                 <td>{{ producto.categoria }}</td>
 
                 <td>
+
+                    <a href="{% url 'producto_detalle' producto.id %}" class="btn btn-sm btn-info text-white">
+                        <i class="bi bi-eye"></i> Ver
+                    </a>
 
                     <a href="{% url 'editar_producto' producto.id %}" class="btn btn-sm btn-warning">
 Editar
@@ -74,6 +83,14 @@ Eliminar
 
                 </td>
 
+            </tr>
+            
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center py-4 text-muted">
+                    <i class="bi bi-search" style="font-size: 2rem;"></i>
+                    <p class="mt-2">No se encontraron productos que coincidan con tu búsqueda.</p>
+                </td>
             </tr>
 
             {% endfor %}

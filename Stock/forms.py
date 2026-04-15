@@ -1,21 +1,17 @@
 from django import forms
-from .models import Producto, Categoria, Provedor
+from .models import Producto, Categoria, Proveedor
 
 class ProductoForm(forms.ModelForm):
-
     class Meta:
         model = Producto
         fields = '__all__'
 
 class CategoriaForm(forms.ModelForm):
-    
     class Meta:
-        model= Categoria
-        fields= "__all__"
+        model = Categoria
+        fields = "__all__"
         
-        
-class ProvedorForm(forms.ModelForm):
-    
+class ProveedorForm(forms.ModelForm):
     class Meta:
-        model= Provedor
-        fields= "__all__"
+        model = Proveedor 
+        fields = "__all__"

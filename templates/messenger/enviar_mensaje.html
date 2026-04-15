@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h2 class="mb-4 text-center"><i class="bi bi-send-plus"></i> Enviar Nuevo Mensaje</h2>
+        <div class="card shadow-sm p-4">
+            <form method="post">
+                {% csrf_token %}
+                <div class="mb-3">
+                    <label class="form-label">Para:</label>
+                    {{ form.destinatario }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Mensaje:</label>
+                    {{ form.contenido }}
+                </div>
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-primary">Enviar Mensaje</button>
+                    <a href="{% url 'inbox' %}" class="btn btn-outline-secondary">Volver al Inbox</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Estilo rápido para los inputs de Django */
+    form select, form textarea {
+        display: block;
+        width: 100%;
+        padding: 0.375rem 0.75rem;
+        font-size: 1rem;
+        border-radius: 0.375rem;
+        border: 1px solid #ced4da;
+    }
+    form textarea {
+        height: 150px;
+    }
+</style>
+{% endblock %}

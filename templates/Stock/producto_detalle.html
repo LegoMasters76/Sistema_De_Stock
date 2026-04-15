@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Detalle del Producto: {{ producto.nombre }}</h2>
+                <a href="{% url 'stock' %}" class="btn btn-outline-secondary">Volver al Stock</a>
+            </div>
+
+            <div class="card shadow-sm overflow-hidden">
+                <div class="row g-0">
+                    <div class="col-md-5 bg-light d-flex align-items-center justify-content-center border-end p-3 text-center">
+                        {% if producto.imagen %}
+                            <img src="{{ producto.imagen.url }}" class="img-fluid rounded shadow" alt="{{ producto.nombre }}" style="max-height: 400px; width: auto;">
+                        {% else %}
+                            <div class="p-5 text-muted">
+                                <i class="bi bi-image" style="font-size: 5rem;"></i>
+                                <p>Sin imagen disponible</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                    <div class="col-md-7">
+                        <div class="card-body p-4">
+                            <h3 class="card-title text-primary">{{ producto.nombre }}</h3>
+                            <div class="mb-3">
+                                <span class="badge bg-info text-dark px-3 py-2">{{ producto.categoria.nombre }}</span>
+                                <span class="text-muted ms-2 small">Agregado el: {{ producto.fecha_creacion|date:"d/m/Y" }}</span>
+                            </div>
+                            
+                            <hr>
+                            
+                            <div class="row mb-4">
+                                <div class="col-6">
+                                    <label class="text-muted small d-block">Precio</label>
+                                    <h4 class="fw-bold text-success">${{ producto.precio }}</h4>
+                                </div>
+                                <div class="col-6 border-start">
+                                    <label class="text-muted small d-block">Stock Actual</label>
+                                    <h4 class="fw-bold {% if producto.stock <= producto.stock_minimo %}text-danger{% endif %}">{{ producto.stock }} unidades</h4>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h5 class="border-bottom pb-2 mb-3">Descripción</h5>
+                                <div class="card-text text-secondary">
+                                    {% if producto.descripcion %}
+                                        {{ producto.descripcion|safe }}
+                                    {% else %}
+                                        <p class="fst-italic">Sin descripción detallada.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="mt-5 pt-3 border-top">
+                                <a href="{% url 'editar_producto' producto.id %}" class="btn btn-warning"><i class="bi bi-pencil"></i> Editar Producto</a>
+                                <form action="{% url 'eliminar_producto' producto.id %}" method="POST" style="display: inline;" onsubmit="return confirm('¿Estás seguro de eliminar este producto?')">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Eliminar</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

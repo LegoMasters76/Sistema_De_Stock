@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="bi bi-bounding-box"></i> Delimitar Espacio Físico</h2>
+        <a href="{% url 'mapa_stock' %}" class="btn btn-outline-secondary">Volver al Mapa</a>
+    </div>
+
+    <div class="card mb-3 shadow-sm">
+        <div class="card-body bg-light">
+            <h5>Dimensiones del Depósito</h5>
+            <div class="row g-3 align-items-end">
+                <div class="col-auto">
+                    <label class="form-label">Ancho (m)</label>
+                    <input type="number" id="depo_ancho" class="form-control" value="{{ config.ancho_px }}">
+                </div>
+                <div class="col-auto">
+                    <label class="form-label">Largo (m)</label>
+                    <input type="number" id="depo_largo" class="form-control" value="{{ config.largo_px }}">
+                </div>
+                <div class="col-auto">
+                    <button id="btnActualizarPrevia" class="btn btn-secondary">Previsualizar</button>
+                    <button id="btnGuardarLimites" class="btn btn-primary">Guardar Dimensiones</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="canvas-container" class="border shadow-sm" style="background:#333; overflow:auto; height: 500px;">
+        <div id="container"></div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/konva@9/konva.min.js"></script>
+<script>
+    let stage, layer, suelo;
+
+    document.addEventListener('DOMContentLoaded', function() {
+        stage = new Konva.Stage({
+            container: 'container',
+            width: 2500, // Un área de trabajo grande
+            height: 2000
+        });
+
+        layer = new Konva.Layer();
+        stage.add(layer);
+
+        // Representación del galpón
+        suelo = new Konva.Rect({
+            x: 50,
+            y: 50,
+            width: {{ config.ancho_px }},
+            height: {{ config.largo_px }},
+            fill: 'white',
+            stroke: '#007bff',
+            strokeWidth: 4,
+            dash: [10, 5] // Línea punteada para indicar límite
+        });
+
+        layer.add(suelo);
+        layer.draw();
+
+        // Solo actualiza el canvas
+        document.getElementById('btnActualizarPrevia').onclick = function() {
+            const w = parseInt(document.getElementById('depo_ancho').value);
+            const h = parseInt(document.getElementById('depo_largo').value);
+            suelo.width(w);
+            suelo.height(h);
+            layer.draw();
+        };
+
+        // Guarda en la base de datos
+        document.getElementById('btnGuardarLimites').onclick = function() {
+            const w = parseInt(document.getElementById('depo_ancho').value);
+            const h = parseInt(document.getElementById('depo_largo').value);
+            
+            fetch('/configurar-limites/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: JSON.stringify({ ancho: w, largo: h })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'ok') {
+                    suelo.width(w);
+                    suelo.height(h);
+                    layer.draw();
+                    alert("¡Dimensiones guardadas correctamente!");
+                } else {
+                    alert("Error al guardar: " + data.message);
+                }
+            })
+            .catch(err => alert("Error de conexión"));
+        };
+    });
+</script>
+{% endblock %}
