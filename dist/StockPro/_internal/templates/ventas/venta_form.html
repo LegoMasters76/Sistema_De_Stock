@@ -1,0 +1,263 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-cart-plus"></i> Registrar Nueva Venta</h2>
+        <a href="{% url 'ventas:venta_list' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+
+    <form method="post" id="ventaForm">
+        {% csrf_token %}
+        
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Datos del Cliente</h5>
+                <a href="{% url 'ventas:cliente_create' %}" class="btn btn-sm btn-outline-primary"><i class="bi bi-person-plus"></i> Registrar Nuevo Cliente</a>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Cliente *</label>
+                        {{ form.cliente_seleccion }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Teléfono</label>
+                        {{ form.telefono }}
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Email</label>
+                        {{ form.email }}
+                    </div>
+                </div>
+                <small class="text-muted mt-2 d-block"><i class="bi bi-info-circle"></i> Selecciona un cliente registrado y sus datos se completarán automáticamente. (Si no existe, primero debes registrarlo).</small>
+            </div>
+        </div>
+
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Productos</h5>
+                <button type="button" id="add-item" class="btn btn-sm btn-success"><i class="bi bi-plus-lg"></i> Agregar Producto</button>
+            </div>
+            <div class="card-body p-0">
+                {{ detalles.management_form }}
+                <table class="table table-borderless mb-0" id="detalles-table">
+                    <thead class="table-dark">
+                        <tr>
+                            <th width="35%">Producto</th>
+                            <th width="20%">Cantidad (Stock)</th>
+                            <th width="20%">Precio Unit.</th>
+                            <th width="15%">Subtotal</th>
+                            <th width="10%">Borrar</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detalles-body">
+                        {% for detalle_form in detalles %}
+                        <tr class="detalle-row">
+                            {% for hidden in detalle_form.hidden_fields %}
+                                {{ hidden }}
+                            {% endfor %}
+                            <td>{{ detalle_form.producto }}</td>
+                            <td>
+                                {{ detalle_form.cantidad }}
+                                <small class="text-muted stock-info d-block mt-1"></small>
+                            </td>
+                            <td>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    {{ detalle_form.precio_unitario }}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="text" class="form-control subtotal-input" readonly value="0.00">
+                                </div>
+                            </td>
+                            <td class="text-center align-middle">
+                                {% if detalles.can_delete %}
+                                    <div class="d-none">{{ detalle_form.DELETE }}</div>
+                                    <button type="button" class="btn btn-sm btn-outline-danger btn-remove"><i class="bi bi-trash"></i></button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-light border-top">
+                        <tr>
+                            <th colspan="3" class="text-end fs-5">Total Venta:</th>
+                            <th colspan="2" class="fs-5 text-success fw-bold">$<span id="gran-total">0.00</span></th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-check-circle"></i> Confirmar Venta</button>
+        </div>
+    </form>
+</div>
+
+<style>
+    .errorlist { color: #dc3545; list-style: none; padding: 0; margin-top: 5px; font-size: 0.875em; }
+</style>
+
+<script>
+    const productosInfo = {{ productos_info|safe }};
+    let clientesData = {};
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- 1. LÓGICA DE AUTOCOMPLETADO DE CLIENTES ---
+        const clienteSelect = document.getElementById('cliente-select');
+        const telInput = document.getElementById('id_telefono');
+        const emailInput = document.getElementById('id_email');
+        
+        // Cargar datos de clientes
+        fetch('{% url "ventas:clientes_api" %}')
+            .then(res => res.json())
+            .then(data => { clientesData = data; })
+            .catch(err => console.error("Error cargando clientes:", err));
+            
+        // Autocompletar cuando cambie la selección
+        clienteSelect.addEventListener('change', function() {
+            const clienteId = this.value;
+            if (clientesData[clienteId]) {
+                telInput.value = clientesData[clienteId].telefono;
+                emailInput.value = clientesData[clienteId].email;
+            } else {
+                telInput.value = "";
+                emailInput.value = "";
+            }
+        });
+
+        // --- 2. LÓGICA DEL FORMSET Y STOCK ---
+        const addBtn = document.getElementById('add-item');
+        const tableBody = document.getElementById('detalles-body');
+        const totalFormsInput = document.getElementById('id_detalles-TOTAL_FORMS');
+        const totalSpan = document.getElementById('gran-total');
+
+        function updateRow(row) {
+            const select = row.querySelector('.producto-select');
+            const qty = row.querySelector('.cantidad-input');
+            const price = row.querySelector('.precio-input');
+            const subtotal = row.querySelector('.subtotal-input');
+            const stockInfo = row.querySelector('.stock-info');
+
+            if (select && select.value) {
+                const pInfo = productosInfo[select.value];
+                if (pInfo) {
+                    // Actualizar precio inicial
+                    if (!price.value) {
+                        price.value = pInfo.precio;
+                    }
+                    
+                    stockInfo.textContent = `Disp: ${pInfo.stock}`;
+                    
+                    if (pInfo.stock === 0) {
+                        stockInfo.innerHTML = `<span class="text-danger">¡Sin stock!</span>`;
+                        stockInfo.classList.add('fw-bold');
+                        qty.value = 0;
+                        qty.setAttribute('readonly', 'true');
+                    } else {
+                        stockInfo.classList.remove('text-danger', 'fw-bold');
+                        qty.removeAttribute('readonly');
+                        // Se eliminó el "auto-tope" (qty.value = max), así el usuario 
+                        // puede escribir 11, y ver el error oficial del servidor.
+                    }
+                }
+                
+                const q = parseFloat(qty.value) || 0;
+                const p = parseFloat(price.value) || 0;
+                subtotal.value = (q * p).toFixed(2);
+            } else {
+                if(subtotal) subtotal.value = "0.00";
+                if(stockInfo) stockInfo.textContent = "";
+            }
+            updateTotal();
+        }
+
+        function updateTotal() {
+            let total = 0;
+            document.querySelectorAll('.detalle-row').forEach(row => {
+                if (row.style.display !== 'none') {
+                    const subtotal = row.querySelector('.subtotal-input');
+                    if(subtotal) {
+                        total += parseFloat(subtotal.value) || 0;
+                    }
+                }
+            });
+            totalSpan.textContent = total.toFixed(2);
+        }
+
+        function bindEvents(row) {
+            const select = row.querySelector('.producto-select');
+            const qty = row.querySelector('.cantidad-input');
+            const price = row.querySelector('.precio-input');
+            
+            if(select) {
+                select.addEventListener('change', () => updateRow(row));
+                select.addEventListener('change', function() {
+                   if(price) price.value = '';
+                   updateRow(row);
+                });
+            }
+            if(qty) qty.addEventListener('input', () => updateRow(row));
+            if(price) price.addEventListener('input', () => updateRow(row));
+            
+            const removeBtn = row.querySelector('.btn-remove');
+            if(removeBtn) {
+                removeBtn.addEventListener('click', function() {
+                    const deleteInput = row.querySelector('input[type="checkbox"][id$="-DELETE"]');
+                    if (deleteInput) {
+                        deleteInput.checked = true;
+                        row.style.display = 'none';
+                    } else {
+                        row.remove();
+                    }
+                    updateTotal();
+                });
+            }
+        }
+
+        document.querySelectorAll('.detalle-row').forEach(row => {
+            bindEvents(row);
+            updateRow(row);
+        });
+
+        addBtn.addEventListener('click', function() {
+            const formCount = parseInt(totalFormsInput.value);
+            const firstRow = document.querySelector('.detalle-row');
+            
+            if (!firstRow) return;
+
+            const newRow = firstRow.cloneNode(true);
+            newRow.style.display = 'table-row';
+            
+            const regex = new RegExp(`detalles-(\\d+)-`, 'g');
+            newRow.innerHTML = newRow.innerHTML.replace(regex, `detalles-${formCount}-`);
+            
+            newRow.querySelectorAll('input:not([type=hidden]), select').forEach(input => {
+                input.value = '';
+                if(input.type === 'number') input.value = '1';
+                if(input.classList.contains('subtotal-input')) input.value = '0.00';
+            });
+            
+            newRow.querySelectorAll('input[type=hidden]').forEach(input => {
+                 input.value = '';
+            });
+            
+            newRow.querySelectorAll('input[type=checkbox]').forEach(checkbox => checkbox.checked = false);
+            
+            const stockInfo = newRow.querySelector('.stock-info');
+            if (stockInfo) stockInfo.textContent = "";
+
+            tableBody.appendChild(newRow);
+            totalFormsInput.value = formCount + 1;
+            
+            bindEvents(newRow);
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <h2 class="mb-4 text-center"><i class="bi bi-envelope-open"></i> Detalle del Mensaje</h2>
+        <div class="card shadow-sm border-0 overflow-hidden">
+            <div class="card-header bg-primary text-white p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>De: <strong>{{ mensaje.remitente }}</strong></span>
+                    <span class="small">{{ mensaje.fecha_envio|date:"d/m/Y H:i" }}</span>
+                </div>
+            </div>
+            <div class="card-body p-4 bg-white" style="min-height: 200px;">
+                <p class="card-text lead" style="white-space: pre-wrap;">{{ mensaje.contenido }}</p>
+            </div>
+            <div class="card-footer bg-light p-3">
+                <div class="d-flex justify-content-between">
+                    <a href="{% url 'inbox' %}" class="btn btn-outline-secondary btn-sm">Volver al Inbox</a>
+                    <a href="{% url 'enviar_mensaje' %}" class="btn btn-primary btn-sm">Responder</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

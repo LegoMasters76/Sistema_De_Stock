@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="container mt-4">
+
+<h2>Buscar Producto</h2>
+
+<form method="GET">
+
+<div class="mb-3">
+<input type="text" name="nombre" class="form-control" placeholder="Buscar producto...">
+</div>
+
+<button class="btn btn-primary">Buscar</button>
+
+</form>
+
+<hr>
+
+{% if resultados %}
+
+<h4>Resultados:</h4>
+
+<table class="table table-striped">
+
+<tr>
+<th>Nombre</th>
+<th>Precio</th>
+<th>Stock</th>
+</tr>
+
+{% for producto in resultados %}
+
+<tr>
+<td>{{ producto.nombre }}</td>
+<td>${{ producto.precio }}</td>
+<td>{{ producto.stock }}</td>
+</tr>
+
+{% endfor %}
+
+</table>
+
+{% endif %}
+
+</div>
+
+{% endblock %}
