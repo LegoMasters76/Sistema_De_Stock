@@ -10,6 +10,8 @@ import sys
 import threading
 import socket
 import time
+import ctypes
+import traceback
 
 # Determinar la ruta base (funciona tanto en desarrollo como empaquetado con PyInstaller)
 if getattr(sys, 'frozen', False):
@@ -18,6 +20,11 @@ if getattr(sys, 'frozen', False):
 else:
     # Ejecutándose desde el script Python
     BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+if getattr(sys, 'frozen', False) and 'debug' not in os.path.basename(sys.executable).lower():
+    console_window = ctypes.windll.kernel32.GetConsoleWindow()
+    if console_window:
+        ctypes.windll.user32.ShowWindow(console_window, 0)
 
 # Agregar el directorio base al path de Python
 sys.path.insert(0, BASE_DIR)
@@ -65,26 +72,44 @@ def main():
     # Cambiar al directorio del proyecto
     os.chdir(BASE_DIR)
 
+    log_path = os.path.join(BASE_DIR, 'StockPro_error.log')
+    with open(log_path, 'w', encoding='utf-8') as log_file:
+        log_file.write(f"Launcher iniciado: {sys.executable}\n")
+    if getattr(sys, 'frozen', False):
+        output_log = open(log_path, 'a', encoding='utf-8')
+        sys.stdout = output_log
+        sys.stderr = output_log
+
+    def log(message):
+        with open(log_path, 'a', encoding='utf-8') as log_file:
+            log_file.write(message + '\n')
+
     port = find_free_port()
+    log(f"Puerto elegido: {port}")
     print(f"[StockPro] Iniciando en puerto {port}...")
 
     # Ejecutar migraciones antes de iniciar
     print("[StockPro] Verificando base de datos...")
     try:
         run_migrations()
+        log("Migraciones finalizadas")
     except Exception as e:
+        log(f"Error en migraciones: {e}")
         print(f"[StockPro] Advertencia en migraciones: {e}")
 
     # Iniciar Django en un hilo separado (daemon=True para que muera con el proceso principal)
     print("[StockPro] Iniciando servidor...")
     server_thread = threading.Thread(target=start_django_server, args=(port,), daemon=True)
     server_thread.start()
+    log("Hilo del servidor iniciado")
 
     # Esperar a que el servidor esté listo
     if not wait_for_server(port):
+        log("ERROR: El servidor no respondió")
         print("[StockPro] ERROR: El servidor no respondió a tiempo.")
         sys.exit(1)
 
+    log("Servidor listo")
     print(f"[StockPro] Servidor listo en http://127.0.0.1:{port}")
     print("[StockPro] Abriendo ventana de la aplicación...")
 
@@ -99,10 +124,19 @@ def main():
         min_size=(1024, 600),
     )
     # webview.start() bloquea hasta que se cierra la ventana
+    log("Iniciando webview")
     webview.start()
+    log("Webview finalizado")
 
     print("[StockPro] Aplicación cerrada.")
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except Exception:
+        log_path = os.path.join(BASE_DIR, 'StockPro_error.log')
+        with open(log_path, 'a', encoding='utf-8') as log_file:
+            log_file.write("Excepción no controlada:\n")
+            traceback.print_exc(file=log_file)
+        raise

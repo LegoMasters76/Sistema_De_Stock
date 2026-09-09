@@ -34,12 +34,6 @@
                 </a>
             </li>
 
-            <li class="nav-item">
-                <a class="nav-link text-white" href="{% url 'about' %}">
-                    <i class="bi bi-info-circle"></i> Acerca de mí
-                </a>
-            </li>
-
             {% if user.is_authenticated %}
                 <li class="nav-item">
                     <a class="nav-link text-white" href="{% url 'mapa_stock' %}">

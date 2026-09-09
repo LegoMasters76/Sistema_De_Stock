@@ -6,16 +6,15 @@ from django.contrib import messages
 import json
 from django.views.generic import TemplateView, DetailView
 from django.db.models import F
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
 
-class AboutMe(TemplateView):
-    template_name = "Stock/about.html"
-
-class ProductoDetalle(DetailView):
+class ProductoDetalle(LoginRequiredMixin, DetailView):
     model = Producto
     template_name = "Stock/producto_detalle.html"
     context_object_name = "producto"
 
+@login_required
 def index(request):
     productos = Producto.objects.all()
     context = {
@@ -25,6 +24,7 @@ def index(request):
     }
     return render(request, "Stock/index.html", context)
 
+@login_required
 def stock(request):
     productos = Producto.objects.all()
     nombre = request.GET.get("nombre")
@@ -84,6 +84,7 @@ def agregar_proveedor(request):
         form = ProveedorForm()
     return render(request, "Stock/agregar_proveedor.html", {"form": form})
 
+@login_required
 def mapa_stock(request):
     estanterias_qs = Estanteria.objects.all()
     config = ConfiguracionDeposito.objects.first()
@@ -105,6 +106,7 @@ def mapa_stock(request):
     }
     return render(request, "Stock/mapa_stock.html", context)
 
+@login_required
 def guardar_estanteria(request):
     if request.method == "POST":
         try:
@@ -145,19 +147,40 @@ def guardar_estanteria(request):
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
+@login_required
 def configurar_limites(request):
     config, created = ConfiguracionDeposito.objects.get_or_create(id=1)
     if request.method == "POST":
         try:
             data = json.loads(request.body)
-            config.ancho_px = int(data.get('ancho'))
-            config.largo_px = int(data.get('largo'))
+            ancho = int(data.get('ancho'))
+            largo = int(data.get('largo'))
+            contorno = data.get('contorno', [])
+
+            if ancho <= 0 or largo <= 0:
+                return JsonResponse({"status": "error", "message": "Las dimensiones deben ser mayores que cero."}, status=400)
+            if not isinstance(contorno, list) or len(contorno) < 3:
+                return JsonResponse({"status": "error", "message": "El contorno debe tener al menos tres puntos."}, status=400)
+            if any(
+                not isinstance(point, dict)
+                or not isinstance(point.get('x'), (int, float))
+                or not isinstance(point.get('y'), (int, float))
+                or point['x'] < 0 or point['x'] > ancho
+                or point['y'] < 0 or point['y'] > largo
+                for point in contorno
+            ):
+                return JsonResponse({"status": "error", "message": "Los puntos deben estar dentro de las dimensiones del depósito."}, status=400)
+
+            config.ancho_px = ancho
+            config.largo_px = largo
+            config.contorno = contorno
             config.save()
             return JsonResponse({"status": "ok"})
         except Exception as e:
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
     return render(request, "Stock/dibujar_mapa.html", {"config": config})
 
+@login_required
 def buscar_producto(request):
     resultados = []
     nombre_buscado = request.GET.get("nombre")
@@ -165,6 +188,7 @@ def buscar_producto(request):
         resultados = Producto.objects.filter(nombre__icontains=nombre_buscado)
     return render(request, "Stock/buscar_producto.html", {"resultados": resultados})
 
+@login_required
 def productos_por_estante(request, id):
     estante = get_object_or_404(Estanteria, id=id)
     productos = estante.productos.all().values('nombre', 'stock', 'nivel_especifico')

@@ -1,28 +1,30 @@
 {% extends "base.html" %}
 
 {% block content %}
+<div class="container py-4">
+	<div class="row justify-content-center">
+		<div class="col-md-8">
+			<h2 class="mb-4"><i class="bi bi-plus-circle"></i> Agregar Nuevo Producto</h2>
 
-<h2><i class="bi bi-plus-circle"></i> Agregar Nuevo Producto</h2>
+			<form method="POST" enctype="multipart/form-data">
+				{% csrf_token %}
 
-<form method="POST" enctype="multipart/form-data">
+				<div class="card p-4 shadow-sm border-0">
+					{{ form.media }}
+					{{ form.as_p }}
 
-{% csrf_token %}
-
-<div class="card p-4 shadow">
-
-{{ form.media }}
-{{ form.as_p }}
-
-<button type="submit" class="btn btn-success mt-3">
-<i class="bi bi-save"></i> Guardar Producto
-</button>
-
-<a href="{% url 'stock' %}" class="btn btn-secondary">
-Cancelar
-</a>
-
+					<div class="mt-4">
+						<button type="submit" class="btn btn-success"><i class="bi bi-save"></i> Guardar Producto</button>
+						<a href="{% url 'stock' %}" class="btn btn-outline-secondary ms-2">Cancelar</a>
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
 </div>
 
-</form>
+<style>
+	.errorlist { color: #dc3545; list-style: none; padding: 0; margin-top: 5px; font-size: 0.875em; }
+</style>
 
 {% endblock %}

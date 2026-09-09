@@ -2,14 +2,28 @@
 Script de empaquetado para generar el .exe de StockPro
 Ejecutar: python build_exe.py
 """
-import PyInstaller.__main__
 import os
 import shutil
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DIST_DIR = os.path.join(BASE_DIR, 'dist', 'StockPro')
 
+
+def copy_runtime_directory(name):
+    source = os.path.join(BASE_DIR, name)
+    destination = os.path.join(DIST_DIR, name)
+    if os.path.exists(source):
+        shutil.copytree(source, destination, dirs_exist_ok=True)
+        print(f"[BUILD] Carpeta {name} copiada.")
+
 def build():
+    try:
+        import PyInstaller.__main__
+    except ModuleNotFoundError as error:
+        raise SystemExit(
+            "Falta PyInstaller. Ejecuta: python -m pip install -r requirements.txt"
+        ) from error
+
     print("=" * 50)
     print("  StockPro - Generador de .exe")
     print("=" * 50)
@@ -27,7 +41,7 @@ def build():
         'launcher.py',
         '--name=StockPro',
         '--onedir',             # Carpeta con todos los archivos
-        '--windowed',           # Sin ventana de consola
+        '--windowed',           # Aplicación de escritorio sin consola visible
         '--noconfirm',          # No preguntar confirmación
         '--clean',              # Limpiar cache
         # Incluir los archivos del proyecto Django
@@ -38,6 +52,7 @@ def build():
         f'--add-data={os.path.join(BASE_DIR, "messenger")};messenger',
         f'--add-data={os.path.join(BASE_DIR, "main")};main',
         f'--add-data={os.path.join(BASE_DIR, "templates")};templates',
+        f'--add-data={os.path.join(BASE_DIR, "static")};static',
         f'--add-data={os.path.join(BASE_DIR, "manage.py")};.',
         # Hidden imports que Django necesita
         '--hidden-import=django',
@@ -99,7 +114,17 @@ def build():
         '--hidden-import=main.migrations',
         '--hidden-import=webview',
         '--hidden-import=ckeditor',
+        '--hidden-import=ckeditor_uploader',
+        '--hidden-import=ckeditor_uploader.urls',
+        '--hidden-import=ckeditor_uploader.fields',
+        '--hidden-import=ckeditor_uploader.views',
+        '--collect-all=ckeditor',
+        '--collect-all=ckeditor_uploader',
     ])
+
+    # Estos recursos deben quedar junto al .exe porque BASE_DIR apunta a esta carpeta.
+    copy_runtime_directory('templates')
+    copy_runtime_directory('static')
 
     # Copiar la base de datos si existe
     db_path = os.path.join(BASE_DIR, 'db.sqlite3')

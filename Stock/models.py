@@ -1,11 +1,14 @@
+from django.conf import settings
 from django.db import models
-from ckeditor.fields import RichTextField
+from django.db.models import Q
+from django_ckeditor_5.fields import CKEditor5Field
 
 class ConfiguracionDeposito(models.Model):
     nombre = models.CharField(max_length=100, default="Depósito Principal")
     ancho_px = models.IntegerField(default=2000)
     largo_px = models.IntegerField(default=1500)
     color_suelo = models.CharField(max_length=20, default="#ffffff")
+    contorno = models.JSONField(default=list, blank=True)
 
     class Meta:
         verbose_name = "Configuración del Depósito"
@@ -46,13 +49,13 @@ class Estanteria(models.Model):
 
 class Producto(models.Model):
     nombre = models.CharField(max_length=100)
-    descripcion = RichTextField(blank=True, null=True)
+    descripcion = CKEditor5Field("Descripción", config_name="default", blank=True, null=True)
     precio = models.DecimalField(max_digits=10, decimal_places=2)
-    stock = models.IntegerField(default=0)
+    stock = models.PositiveIntegerField(default=0)
     stock_minimo = models.IntegerField(default=5)
     imagen = models.ImageField(upload_to='productos/', blank=True, null=True)
     fecha_creacion = models.DateTimeField(auto_now_add=True, null=True)
-    categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE)
+    categoria = models.ForeignKey(Categoria, on_delete=models.PROTECT)
     proveedor = models.ForeignKey(Proveedor, on_delete=models.SET_NULL, null=True)
     estanteria = models.ForeignKey(
         Estanteria, 
@@ -63,19 +66,30 @@ class Producto(models.Model):
     )
     nivel_especifico = models.IntegerField(null=True, blank=True)
 
+    class Meta:
+        constraints = [
+            models.CheckConstraint(condition=Q(stock__gte=0), name='producto_stock_no_negativo'),
+        ]
+
     def __str__(self):
         return self.nombre
 
 class MovimientosStock(models.Model):
     TIPO_MOVIMIENTO = [
-        ("entrada", "Entrada"),
-        ("salida", "Salida"),
+        ("VENTA", "Venta"),
+        ("ENTRADA", "Entrada"),
+        ("AJUSTE", "Ajuste"),
+        ("MERMA", "Merma"),
+        ("TRANSFERENCIA", "Transferencia"),
     ]
-    producto = models.ForeignKey(Producto, on_delete=models.CASCADE)
-    tipo = models.CharField(max_length=10, choices=TIPO_MOVIMIENTO)
-    cantidad = models.IntegerField()
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT)
+    tipo = models.CharField(max_length=20, choices=TIPO_MOVIMIENTO)
+    cantidad = models.PositiveIntegerField()
     fecha = models.DateTimeField(auto_now_add=True)
     descripcion = models.TextField(blank=True, null=True)
+    saldo_resultante = models.PositiveIntegerField(null=True, blank=True)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT)
+    referencia = models.CharField(max_length=100, blank=True)
 
     class Meta:
         verbose_name = "Movimiento de Stock"
@@ -83,3 +97,11 @@ class MovimientosStock(models.Model):
 
     def __str__(self):
         return f"{self.producto.nombre} - {self.tipo} ({self.cantidad})"
+
+    def save(self, *args, **kwargs):
+        if self.pk:
+            raise ValueError("Los movimientos de stock son inmutables.")
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Los movimientos de stock son inmutables.")

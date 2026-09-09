@@ -24,53 +24,87 @@
                     <button id="btnGuardarLimites" class="btn btn-primary">Guardar Dimensiones</button>
                 </div>
             </div>
+            <div class="form-text mt-3">Arrastra los puntos para adaptar el contorno. Haz doble clic sobre un lado para agregar un punto y pulsa Supr para quitarlo.</div>
         </div>
     </div>
 
-    <div id="canvas-container" class="border shadow-sm" style="background:#333; overflow:auto; height: 500px;">
+    <div id="canvas-container" class="border shadow-sm" style="background:#333; overflow:auto; height: min(70vh, 760px); min-height: 600px;">
         <div id="container"></div>
     </div>
 </div>
 
 <script src="https://unpkg.com/konva@9/konva.min.js"></script>
+{{ config.contorno|default:"[]"|json_script:"contorno-data" }}
 <script>
-    let stage, layer, suelo;
+    let stage, layer, suelo, puntosLayer, escalaEditor = 1;
+    let puntos = [];
+    const margen = 50;
+    const contornoInicial = JSON.parse(document.getElementById('contorno-data').textContent);
 
     document.addEventListener('DOMContentLoaded', function() {
         stage = new Konva.Stage({
             container: 'container',
-            width: 2500, // Un área de trabajo grande
-            height: 2000
+            width: document.getElementById('canvas-container').clientWidth,
+            height: document.getElementById('canvas-container').clientHeight
         });
 
         layer = new Konva.Layer();
         stage.add(layer);
 
-        // Representación del galpón
-        suelo = new Konva.Rect({
-            x: 50,
-            y: 50,
-            width: {{ config.ancho_px }},
-            height: {{ config.largo_px }},
+        puntosLayer = new Konva.Layer();
+        stage.add(puntosLayer);
+
+        puntos = contornoInicial.length >= 3 ? contornoInicial : [
+            { x: 0, y: 0 },
+            { x: {{ config.ancho_px }}, y: 0 },
+            { x: {{ config.ancho_px }}, y: {{ config.largo_px }} },
+            { x: 0, y: {{ config.largo_px }} }
+        ];
+
+        suelo = new Konva.Line({
+            points: [],
             fill: 'white',
             stroke: '#007bff',
             strokeWidth: 4,
-            dash: [10, 5] // Línea punteada para indicar límite
+            dash: [10, 5],
+            closed: true
         });
 
         layer.add(suelo);
-        layer.draw();
+        dibujarContorno();
 
-        // Solo actualiza el canvas
+        suelo.on('dblclick dbltap', function(event) {
+            const posicion = stage.getPointerPosition();
+            const punto = puntoEnDeposito(posicion);
+            const indice = indiceLadoMasCercano(punto);
+            puntos.splice(indice + 1, 0, punto);
+            dibujarContorno();
+        });
+
+        window.addEventListener('resize', function() {
+            const contenedor = document.getElementById('canvas-container');
+            stage.width(contenedor.clientWidth);
+            stage.height(contenedor.clientHeight);
+            dibujarContorno();
+        });
+
+        window.addEventListener('keydown', function(event) {
+            if ((event.key === 'Delete' || event.key === 'Backspace') && puntos.length > 3 && puntoSeleccionado !== null) {
+                puntos.splice(puntoSeleccionado, 1);
+                puntoSeleccionado = null;
+                dibujarContorno();
+            }
+        });
+
         document.getElementById('btnActualizarPrevia').onclick = function() {
             const w = parseInt(document.getElementById('depo_ancho').value);
             const h = parseInt(document.getElementById('depo_largo').value);
-            suelo.width(w);
-            suelo.height(h);
-            layer.draw();
+            if (w > 0 && h > 0) {
+                puntos = puntos.map(p => ({ x: Math.min(p.x, w), y: Math.min(p.y, h) }));
+                dibujarContorno();
+            }
         };
 
-        // Guarda en la base de datos
         document.getElementById('btnGuardarLimites').onclick = function() {
             const w = parseInt(document.getElementById('depo_ancho').value);
             const h = parseInt(document.getElementById('depo_largo').value);
@@ -81,14 +115,11 @@
                     'Content-Type': 'application/json',
                     'X-CSRFToken': '{{ csrf_token }}'
                 },
-                body: JSON.stringify({ ancho: w, largo: h })
+                body: JSON.stringify({ ancho: w, largo: h, contorno: puntos })
             })
             .then(response => response.json())
             .then(data => {
                 if (data.status === 'ok') {
-                    suelo.width(w);
-                    suelo.height(h);
-                    layer.draw();
                     alert("¡Dimensiones guardadas correctamente!");
                 } else {
                     alert("Error al guardar: " + data.message);
@@ -97,5 +128,88 @@
             .catch(err => alert("Error de conexión"));
         };
     });
+
+    let puntoSeleccionado = null;
+
+    function limitarPunto(punto) {
+        const ancho = parseInt(document.getElementById('depo_ancho').value) || {{ config.ancho_px }};
+        const largo = parseInt(document.getElementById('depo_largo').value) || {{ config.largo_px }};
+        return { x: Math.max(0, Math.min(punto.x, ancho)), y: Math.max(0, Math.min(punto.y, largo)) };
+    }
+
+    function puntoEnCanvas(punto) {
+        return { x: margen + (punto.x * escalaEditor), y: margen + (punto.y * escalaEditor) };
+    }
+
+    function puntoEnDeposito(punto) {
+        return limitarPunto({ x: (punto.x - margen) / escalaEditor, y: (punto.y - margen) / escalaEditor });
+    }
+
+    function actualizarEscalaEditor() {
+        const ancho = parseInt(document.getElementById('depo_ancho').value) || {{ config.ancho_px }};
+        const largo = parseInt(document.getElementById('depo_largo').value) || {{ config.largo_px }};
+        const espacioAncho = Math.max(1, stage.width() - (margen * 2));
+        const espacioLargo = Math.max(1, stage.height() - (margen * 2));
+        escalaEditor = Math.min(espacioAncho / ancho, espacioLargo / largo);
+    }
+
+    function dibujarContorno() {
+        actualizarEscalaEditor();
+        suelo.points(puntos.flatMap(p => {
+            const posicion = puntoEnCanvas(p);
+            return [posicion.x, posicion.y];
+        }));
+        puntosLayer.destroyChildren();
+        puntos.forEach((punto, indice) => {
+            const posicion = puntoEnCanvas(punto);
+            const handle = new Konva.Circle({
+                x: posicion.x,
+                y: posicion.y,
+                radius: 8,
+                fill: '#ffffff',
+                stroke: '#007bff',
+                strokeWidth: 3,
+                draggable: true
+            });
+            handle.on('click tap', () => { puntoSeleccionado = indice; });
+            handle.on('dragmove', () => {
+                const nuevo = puntoEnDeposito({ x: handle.x(), y: handle.y() });
+                const nuevaPosicion = puntoEnCanvas(nuevo);
+                handle.position(nuevaPosicion);
+                puntos[indice] = nuevo;
+                suelo.points(puntos.flatMap(p => {
+                    const puntoCanvas = puntoEnCanvas(p);
+                    return [puntoCanvas.x, puntoCanvas.y];
+                }));
+                layer.draw();
+            });
+            puntosLayer.add(handle);
+        });
+        layer.draw();
+        puntosLayer.draw();
+    }
+
+    function indiceLadoMasCercano(punto) {
+        let indice = 0;
+        let distanciaMinima = Infinity;
+        puntos.forEach((inicio, i) => {
+            const fin = puntos[(i + 1) % puntos.length];
+            const distancia = distanciaAlSegmento(punto, inicio, fin);
+            if (distancia < distanciaMinima) {
+                distanciaMinima = distancia;
+                indice = i;
+            }
+        });
+        return indice;
+    }
+
+    function distanciaAlSegmento(punto, inicio, fin) {
+        const dx = fin.x - inicio.x;
+        const dy = fin.y - inicio.y;
+        const longitud = dx * dx + dy * dy;
+        if (!longitud) return Math.hypot(punto.x - inicio.x, punto.y - inicio.y);
+        const t = Math.max(0, Math.min(1, ((punto.x - inicio.x) * dx + (punto.y - inicio.y) * dy) / longitud));
+        return Math.hypot(punto.x - (inicio.x + t * dx), punto.y - (inicio.y + t * dy));
+    }
 </script>
 {% endblock %}

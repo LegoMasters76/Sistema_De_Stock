@@ -6,6 +6,7 @@ class ConfiguracionDeposito(models.Model):
     ancho_px = models.IntegerField(default=2000)
     largo_px = models.IntegerField(default=1500)
     color_suelo = models.CharField(max_length=20, default="#ffffff")
+    contorno = models.JSONField(default=list, blank=True)
 
     class Meta:
         verbose_name = "Configuración del Depósito"

@@ -25,6 +25,58 @@ class VentaListView(LoginRequiredMixin, ListView):
     template_name = 'ventas/venta_list.html'
     context_object_name = 'ventas'
     ordering = ['-fecha']
+    paginate_by = 10
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        dia = self.request.GET.get('dia')
+        hora = self.request.GET.get('hora')
+        producto_id = self.request.GET.get('producto')
+        cliente = self.request.GET.get('cliente')
+
+        if dia:
+            queryset = queryset.filter(fecha__date=dia)
+        if hora:
+            try:
+                if ':' in hora:
+                    h = hora.split(':')[0]
+                    m = hora.split(':')[1]
+                    queryset = queryset.filter(fecha__hour=h, fecha__minute=m)
+                else:
+                    queryset = queryset.filter(fecha__hour=hora)
+            except ValueError:
+                pass
+                
+        if cliente:
+            queryset = queryset.filter(cliente__icontains=cliente)
+        
+        if producto_id:
+            queryset = queryset.filter(detalles__producto__id=producto_id).distinct()
+
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # Paginación - rango de páginas
+        page_obj = context.get('page_obj')
+        if page_obj:
+            paginator = page_obj.paginator
+            # Generar rango de 5 en 5, ej: ventana alrededor de la página actual
+            # get_elided_page_range requiere el número de página actual
+            page_range = paginator.get_elided_page_range(page_obj.number, on_each_side=2, on_ends=1)
+            context['custom_page_range'] = page_range
+            
+        context['productos_lista'] = Producto.objects.all()
+        from .models import Cliente
+        clientes_nombres = set(Cliente.objects.exclude(nombre__isnull=True).exclude(nombre='').values_list('nombre', flat=True))
+        clientes_nombres.update(Venta.objects.exclude(cliente__isnull=True).exclude(cliente='').values_list('cliente', flat=True))
+        context['clientes_lista'] = sorted(list(clientes_nombres))
+        context['dia_filter'] = self.request.GET.get('dia', '')
+        context['hora_filter'] = self.request.GET.get('hora', '')
+        context['producto_filter'] = self.request.GET.get('producto', '')
+        context['cliente_filter'] = self.request.GET.get('cliente', '')
+        return context
 
 class VentaDetailView(LoginRequiredMixin, DetailView):
     model = Venta
@@ -83,6 +135,9 @@ class VentaCreateView(LoginRequiredMixin, CreateView):
             messages.success(self.request, "Venta registrada exitosamente.")
             return super().form_valid(form)
 
+from django.contrib.auth.decorators import login_required
+
+@login_required
 def clientes_api(request):
     clientes = Cliente.objects.values('id', 'telefono', 'email')
     clientes_dict = {

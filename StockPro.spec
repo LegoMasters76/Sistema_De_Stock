@@ -1,12 +1,21 @@
 # -*- mode: python ; coding: utf-8 -*-
+from PyInstaller.utils.hooks import collect_all
+
+datas = [('C:\\Users\\renzo\\OneDrive\\Desktop\\Sistema de stock\\SistemaDeStock', 'SistemaDeStock'), ('C:\\Users\\renzo\\OneDrive\\Desktop\\Sistema de stock\\Stock', 'Stock'), ('C:\\Users\\renzo\\OneDrive\\Desktop\\Sistema de stock\\account', 'account'), ('C:\\Users\\renzo\\OneDrive\\Desktop\\Sistema de stock\\ventas', 'ventas'), ('C:\\Users\\renzo\\OneDrive\\Desktop\\Sistema de stock\\messenger', 'messenger'), ('C:\\Users\\renzo\\OneDrive\\Desktop\\Sistema de stock\\main', 'main'), ('C:\\Users\\renzo\\OneDrive\\Desktop\\Sistema de stock\\templates', 'templates'), ('C:\\Users\\renzo\\OneDrive\\Desktop\\Sistema de stock\\static', 'static'), ('C:\\Users\\renzo\\OneDrive\\Desktop\\Sistema de stock\\manage.py', '.')]
+binaries = []
+hiddenimports = ['django', 'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles', 'django.contrib.auth.backends', 'django.template.defaulttags', 'django.template.defaultfilters', 'django.template.loader_tags', 'django.templatetags', 'django.templatetags.static', 'django.templatetags.i18n', 'SistemaDeStock', 'SistemaDeStock.settings', 'SistemaDeStock.urls', 'SistemaDeStock.wsgi', 'Stock', 'Stock.models', 'Stock.views', 'Stock.urls', 'Stock.forms', 'Stock.admin', 'Stock.apps', 'Stock.migrations', 'account', 'account.models', 'account.views', 'account.urls', 'account.forms', 'account.admin', 'account.apps', 'account.migrations', 'ventas', 'ventas.models', 'ventas.views', 'ventas.urls', 'ventas.forms', 'ventas.admin', 'ventas.apps', 'ventas.migrations', 'messenger', 'messenger.models', 'messenger.views', 'messenger.urls', 'messenger.admin', 'messenger.apps', 'messenger.context_processors', 'messenger.migrations', 'main', 'main.models', 'main.views', 'main.admin', 'main.apps', 'main.middleware', 'main.migrations', 'webview', 'ckeditor', 'ckeditor_uploader', 'ckeditor_uploader.urls', 'ckeditor_uploader.fields', 'ckeditor_uploader.views']
+tmp_ret = collect_all('ckeditor')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
+tmp_ret = collect_all('ckeditor_uploader')
+datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
     ['launcher.py'],
     pathex=[],
-    binaries=[],
-    datas=[('C:/Users/Renzo/Desktop/Sistema de stock/SistemaDeStock', 'SistemaDeStock'), ('C:/Users/Renzo/Desktop/Sistema de stock/Stock', 'Stock'), ('C:/Users/Renzo/Desktop/Sistema de stock/account', 'account'), ('C:/Users/Renzo/Desktop/Sistema de stock/ventas', 'ventas'), ('C:/Users/Renzo/Desktop/Sistema de stock/messenger', 'messenger'), ('C:/Users/Renzo/Desktop/Sistema de stock/main', 'main'), ('C:/Users/Renzo/Desktop/Sistema de stock/templates', 'templates'), ('C:/Users/Renzo/Desktop/Sistema de stock/manage.py', '.')],
-    hiddenimports=['django', 'django.contrib.admin', 'django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages', 'django.contrib.staticfiles', 'django.contrib.auth.backends', 'django.template.defaulttags', 'django.template.defaultfilters', 'django.template.loader_tags', 'django.templatetags', 'django.templatetags.static', 'django.templatetags.i18n', 'SistemaDeStock', 'SistemaDeStock.settings', 'SistemaDeStock.urls', 'SistemaDeStock.wsgi', 'Stock', 'Stock.models', 'Stock.views', 'Stock.urls', 'Stock.forms', 'Stock.admin', 'Stock.apps', 'Stock.migrations', 'account', 'account.models', 'account.views', 'account.urls', 'account.forms', 'account.admin', 'account.apps', 'account.migrations', 'ventas', 'ventas.models', 'ventas.views', 'ventas.urls', 'ventas.forms', 'ventas.admin', 'ventas.apps', 'ventas.migrations', 'messenger', 'messenger.models', 'messenger.views', 'messenger.urls', 'messenger.admin', 'messenger.apps', 'messenger.context_processors', 'messenger.migrations', 'main', 'main.models', 'main.views', 'main.admin', 'main.apps', 'main.middleware', 'main.migrations', 'webview', 'ckeditor'],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

@@ -1,0 +1,42 @@
+{% extends "base.html" %} {% block content %}
+
+<h1 class="mb-4">Panel de Control</h1>
+
+<div class="row">
+
+    <div class="col-md-4">
+        <div class="card shadow text-center">
+            <div class="card-body">
+                <h5>Total Productos</h5>
+                <p class="display-6">{{ total_productos }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow text-center">
+            <div class="card-body">
+                <h5>Bajo Stock</h5>
+                <p class="display-6 text-warning">{{ bajo_stock }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card shadow text-center">
+            <div class="card-body">
+                <h5>Sin Stock</h5>
+                <p class="display-6 text-danger">{{ sin_stock }}</p>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<div class="mt-4 text-center">
+    <a href="{% url 'stock' %}" class="btn btn-primary btn-lg">
+        Ver Stock
+    </a>
+</div>
+
+{% endblock %}

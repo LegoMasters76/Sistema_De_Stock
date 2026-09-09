@@ -6,7 +6,45 @@
     <a href="{% url 'ventas:venta_create' %}" class="btn btn-success"><i class="bi bi-plus-circle"></i> Nueva Venta</a>
 </div>
 
-<div class="card shadow-sm">
+<!-- Filtros -->
+<div class="card mb-4 shadow-sm">
+    <div class="card-body">
+        <form method="GET" class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="dia" class="form-label">Día</label>
+                <input type="date" name="dia" id="dia" class="form-control" value="{{ dia_filter }}">
+            </div>
+            <div class="col-md-2">
+                <label for="hora" class="form-label">Hora</label>
+                <input type="time" name="hora" id="hora" class="form-control" value="{{ hora_filter }}">
+            </div>
+            <div class="col-md-3">
+                <label for="cliente" class="form-label">Cliente</label>
+                <select name="cliente" id="cliente" class="form-select">
+                    <option value="">Todos</option>
+                    {% for c in clientes_lista %}
+                        <option value="{{ c }}" {% if cliente_filter == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="producto" class="form-label">Producto</label>
+                <select name="producto" id="producto" class="form-select">
+                    <option value="">Todos</option>
+                    {% for p in productos_lista %}
+                        <option value="{{ p.id }}" {% if producto_filter == p.id|stringformat:"s" %}selected{% endif %}>{{ p.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-1 d-flex flex-column gap-2">
+                <button type="submit" class="btn btn-primary w-100" title="Buscar"><i class="bi bi-search"></i></button>
+                <a href="{% url 'ventas:venta_list' %}" class="btn btn-secondary w-100" title="Limpiar Filtros"><i class="bi bi-eraser"></i></a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card shadow-sm mb-4">
     <div class="card-body p-0">
         <table class="table table-hover mb-0">
             <thead class="table-dark">
@@ -33,11 +71,54 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center py-4 text-muted">No hay ventas registradas aún.</td>
+                    <td colspan="6" class="text-center py-4 text-muted">No hay ventas registradas que coincidan con los filtros.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+
+<!-- Paginación -->
+{% if is_paginated %}
+<nav aria-label="Navegación de páginas de ventas">
+    <ul class="pagination justify-content-center">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?page=1&dia={{ dia_filter }}&hora={{ hora_filter }}&producto={{ producto_filter }}&cliente={{ cliente_filter }}" aria-label="Primera">
+                <span aria-hidden="true">&laquo;&laquo;</span>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.previous_page_number }}&dia={{ dia_filter }}&hora={{ hora_filter }}&producto={{ producto_filter }}&cliente={{ cliente_filter }}" aria-label="Anterior">
+                <span aria-hidden="true">&laquo;</span>
+            </a>
+        </li>
+        {% endif %}
+        
+        {% for i in custom_page_range %}
+            {% if i == page_obj.paginator.ELLIPSIS %}
+                <li class="page-item disabled"><span class="page-link">{{ i }}</span></li>
+            {% elif i == page_obj.number %}
+                <li class="page-item active" aria-current="page"><span class="page-link">{{ i }}</span></li>
+            {% else %}
+                <li class="page-item"><a class="page-link" href="?page={{ i }}&dia={{ dia_filter }}&hora={{ hora_filter }}&producto={{ producto_filter }}&cliente={{ cliente_filter }}">{{ i }}</a></li>
+            {% endif %}
+        {% endfor %}
+        
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.next_page_number }}&dia={{ dia_filter }}&hora={{ hora_filter }}&producto={{ producto_filter }}&cliente={{ cliente_filter }}" aria-label="Siguiente">
+                <span aria-hidden="true">&raquo;</span>
+            </a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}&dia={{ dia_filter }}&hora={{ hora_filter }}&producto={{ producto_filter }}&cliente={{ cliente_filter }}" aria-label="Última">
+                <span aria-hidden="true">&raquo;&raquo;</span>
+            </a>
+        </li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
 {% endblock %}

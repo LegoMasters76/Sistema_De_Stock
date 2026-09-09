@@ -152,18 +152,21 @@
 <script src="https://unpkg.com/konva@9/konva.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+{{ config.contorno|default:"[]"|json_script:"contorno-data" }}
 
 <script>
 // --- VARIABLES GLOBALES ---
-let stage, layer, tr;
+let stage, layer, tr, suelo;
 let selectedShape = null;
 let PPM = 1; 
 let warehouseMeters = { ancho: 30, largo: 20 };
 const csrftoken = "{{ csrf_token }}";
 let is3DMode = false;
+const contornoGuardado = JSON.parse(document.getElementById('contorno-data').textContent);
 
 // --- VARIABLES THREE.JS ---
-let scene, camera, renderer, controls, raycaster, mouse;
+let scene, camera, renderer, controls, raycaster, mouse, floor;
+let floorBorder;
 let threeObjects = [];
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -190,6 +193,22 @@ function init2D() {
 
     layer = new Konva.Layer();
     stage.add(layer);
+
+    const contorno = contornoGuardado.length >= 3 ? contornoGuardado : [
+        { x: 0, y: 0 },
+        { x: warehouseMeters.ancho, y: 0 },
+        { x: warehouseMeters.ancho, y: warehouseMeters.largo },
+        { x: 0, y: warehouseMeters.largo }
+    ];
+    suelo = new Konva.Line({
+        points: contorno.flatMap(p => [p.x * PPM, p.y * PPM]),
+        closed: true,
+        fill: '#ffffff',
+        stroke: '#000000',
+        strokeWidth: 4,
+        listening: false
+    });
+    layer.add(suelo);
 
     tr = new Konva.Transformer({
         rotateEnabled: false, 
@@ -251,6 +270,16 @@ function redimensionar2D() {
 
     stage.width(width);
     stage.height(height);
+
+    if (suelo) {
+        const contorno = contornoGuardado.length >= 3 ? contornoGuardado : [
+            { x: 0, y: 0 },
+            { x: warehouseMeters.ancho, y: 0 },
+            { x: warehouseMeters.ancho, y: warehouseMeters.largo },
+            { x: 0, y: warehouseMeters.largo }
+        ];
+        suelo.points(contorno.flatMap(p => [p.x * PPM, p.y * PPM]));
+    }
 
     stage.find('.estante').forEach(e => {
         const info = e.getAttr('original_m');
@@ -419,17 +448,7 @@ function init3D() {
     dirLight.shadow.camera.right = 20;
     scene.add(dirLight);
 
-    // Suelo
-    const floorGeo = new THREE.PlaneGeometry(warehouseMeters.ancho, warehouseMeters.largo);
-    const floorMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.8 });
-    const floor = new THREE.Mesh(floorGeo, floorMat);
-    floor.rotation.x = -Math.PI / 2;
-    floor.receiveShadow = true;
-    scene.add(floor);
-
-    // Grilla para facilitar la ubicación (1m x 1m)
-    const gridHelper = new THREE.GridHelper(Math.max(warehouseMeters.ancho, warehouseMeters.largo), Math.max(warehouseMeters.ancho, warehouseMeters.largo), 0x888888, 0xdddddd);
-    scene.add(gridHelper);
+    crearSuelo3D();
 
     // Raycaster para clics
     raycaster = new THREE.Raycaster();
@@ -438,6 +457,57 @@ function init3D() {
     container.addEventListener('pointerdown', onPointerDown);
 
     animate3D();
+}
+
+function obtenerContorno() {
+    return contornoGuardado.length >= 3 ? contornoGuardado : [
+        { x: 0, y: 0 },
+        { x: warehouseMeters.ancho, y: 0 },
+        { x: warehouseMeters.ancho, y: warehouseMeters.largo },
+        { x: 0, y: warehouseMeters.largo }
+    ];
+}
+
+function crearSuelo3D() {
+    if (floor) {
+        scene.remove(floor);
+        floor.geometry.dispose();
+        floor.material.dispose();
+    }
+    if (floorBorder) {
+        scene.remove(floorBorder);
+        floorBorder.geometry.dispose();
+        floorBorder.material.dispose();
+    }
+
+    const shape = new THREE.Shape();
+    const contorno = obtenerContorno();
+    contorno.forEach((punto, indice) => {
+        const x = (warehouseMeters.ancho / 2) - punto.x;
+        const y = punto.y - (warehouseMeters.largo / 2);
+        if (indice === 0) shape.moveTo(x, y);
+        else shape.lineTo(x, y);
+    });
+    shape.closePath();
+
+    const floorGeo = new THREE.ShapeGeometry(shape);
+    const floorMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.8, side: THREE.DoubleSide });
+    floor = new THREE.Mesh(floorGeo, floorMat);
+    floor.rotation.x = -Math.PI / 2;
+    floor.receiveShadow = true;
+    scene.add(floor);
+
+    floorBorder = new THREE.LineLoop(
+        new THREE.BufferGeometry().setFromPoints(
+            contorno.map(punto => new THREE.Vector3(
+                (warehouseMeters.ancho / 2) - punto.x,
+                0.02,
+                (warehouseMeters.largo / 2) - punto.y
+            ))
+        ),
+        new THREE.LineBasicMaterial({ color: 0x202020, linewidth: 2 })
+    );
+    scene.add(floorBorder);
 }
 
 function redimensionar3D() {
@@ -491,8 +561,8 @@ function render3DScene(estantes) {
         // Mapeo de coordenadas:
         // 2D (0,0) top-left -> 3D X: -width/2, Z: -length/2
         // Y 3D es el eje vertical
-        const posX = (est.x + est.ancho / 2) - (wWidth / 2);
-        const posZ = (est.y + est.largo / 2) - (wLength / 2);
+        const posX = (wWidth / 2) - (est.x + est.ancho / 2);
+        const posZ = (wLength / 2) - (est.y + est.largo / 2);
         
         group.position.set(posX, 0, posZ);
 
@@ -627,6 +697,7 @@ function toggleViewMode() {
         
         // Extraemos estado actual del 2D (incluso lo no guardado)
         const currentState = getCurrentState();
+        crearSuelo3D();
         render3DScene(currentState);
         
         c2d.style.display = 'none';

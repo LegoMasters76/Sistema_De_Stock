@@ -19,5 +19,4 @@ urlpatterns = [
     path('guardar-estanteria/', views.guardar_estanteria, name='guardar_estanteria'),
     path('api/estante/<int:id>/productos/', views.productos_por_estante, name='productos_por_estante'),
     path('configurar-limites/', views.configurar_limites, name='configurar_limites'),
-    path('about/', views.AboutMe.as_view(), name='about'),
 ]
