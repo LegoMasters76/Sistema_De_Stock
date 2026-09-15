@@ -1,0 +1,210 @@
+[
+{
+  "model": "account.perfil",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$KZ2ppF9vCOCkKKZ4aEf8OU$AkJvVwpDdMm0An8LNwv5J+7fHwCCDFrxATHjmbyC7E0=",
+    "last_login": "2026-09-05T04:29:24.081Z",
+    "is_superuser": true,
+    "username": "Renzo",
+    "first_name": "Renzo",
+    "last_name": "Mandarini",
+    "email": "renzo_giganter@hotmail.com",
+    "is_staff": true,
+    "is_active": true,
+    "date_joined": "2026-04-14T19:20:03.137Z",
+    "avatar": "default/default.png",
+    "bio": "",
+    "pais": "Argentina",
+    "dni": "44322259",
+    "direccion": "calle falsa 123",
+    "nro_usuario": null,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "account.perfil",
+  "fields": {
+    "password": "pbkdf2_sha256$1200000$dNcJovzv0mV53K9mjcovcF$yJGD3skGTFcguD7FyX1qxCRP7wtKD/5kOwjPVc765hs=",
+    "last_login": "2026-04-15T19:47:31.452Z",
+    "is_superuser": false,
+    "username": "Nico",
+    "first_name": "",
+    "last_name": "",
+    "email": "",
+    "is_staff": false,
+    "is_active": true,
+    "date_joined": "2026-04-14T22:03:56.587Z",
+    "avatar": "default/default.png",
+    "bio": "",
+    "pais": "Argentina",
+    "dni": "12345678",
+    "direccion": "calle falsa 123",
+    "nro_usuario": 2,
+    "groups": [],
+    "user_permissions": []
+  }
+},
+{
+  "model": "Stock.configuraciondeposito",
+  "pk": 1,
+  "fields": {
+    "nombre": "Depósito Principal",
+    "ancho_px": 30,
+    "largo_px": 20,
+    "color_suelo": "#ffffff",
+    "contorno": [
+      {
+        "x": 0,
+        "y": 0
+      },
+      {
+        "x": 7.739999999999999,
+        "y": 0
+      },
+      {
+        "x": 30,
+        "y": 0
+      },
+      {
+        "x": 29.466192170818506,
+        "y": 20
+      },
+      {
+        "x": 16.5,
+        "y": 19.914375
+      },
+      {
+        "x": 16.439999999999998,
+        "y": 14.274375
+      },
+      {
+        "x": 10.882562277580071,
+        "y": 14.168093861209963
+      },
+      {
+        "x": 10.86,
+        "y": 20
+      },
+      {
+        "x": 0,
+        "y": 20
+      }
+    ]
+  }
+},
+{
+  "model": "Stock.categoria",
+  "pk": 1,
+  "fields": {
+    "nombre": "Lacteos",
+    "descripcion": "Productos Lacteos"
+  }
+},
+{
+  "model": "Stock.categoria",
+  "pk": 2,
+  "fields": {
+    "nombre": "Cigarrillos",
+    "descripcion": "Atados de cigarrillos de 20 unidades"
+  }
+},
+{
+  "model": "Stock.categoria",
+  "pk": 3,
+  "fields": {
+    "nombre": "Cigarrillos",
+    "descripcion": "Atados de cigarrillos de 20 unidades"
+  }
+},
+{
+  "model": "Stock.categoria",
+  "pk": 4,
+  "fields": {
+    "nombre": "Fideos",
+    "descripcion": "paquetes de fideos de 500g"
+  }
+},
+{
+  "model": "Stock.proveedor",
+  "pk": 1,
+  "fields": {
+    "nombre": "Nico",
+    "telefono": "12345678",
+    "email": "nicoprofecoder@hotmail.com"
+  }
+},
+{
+  "model": "Stock.proveedor",
+  "pk": 2,
+  "fields": {
+    "nombre": "Pepito",
+    "telefono": "2477000000",
+    "email": "pepito@hotmail.com"
+  }
+},
+{
+  "model": "Stock.proveedor",
+  "pk": 3,
+  "fields": {
+    "nombre": "Dario",
+    "telefono": "2477000000",
+    "email": "dario@hotmail.com"
+  }
+},
+{
+  "model": "Stock.estanteria",
+  "pk": 2,
+  "fields": {
+    "nombre": "11",
+    "posicion_x": 0,
+    "posicion_y": 1,
+    "ancho": 2,
+    "largo": 1,
+    "niveles": 3,
+    "altura_m": null
+  }
+},
+{
+  "model": "Stock.estanteria",
+  "pk": 3,
+  "fields": {
+    "nombre": "12",
+    "posicion_x": 0,
+    "posicion_y": 3,
+    "ancho": 2,
+    "largo": 1,
+    "niveles": 3,
+    "altura_m": null
+  }
+},
+{
+  "model": "Stock.estanteria",
+  "pk": 7,
+  "fields": {
+    "nombre": "13",
+    "posicion_x": 7,
+    "posicion_y": 12,
+    "ancho": 2,
+    "largo": 1,
+    "niveles": 8,
+    "altura_m": null
+  }
+},
+{
+  "model": "Stock.producto",
+  "pk": 1,
+  "fields": {
+    "nombre": "Manteca LaSerenisima",
+    "descripcion": "<p>asdasdads</p>",
+    "precio": "15000.00",
+    "stock": 7,
+    "stock_minimo": 5,
+    "imagen": "productos/Manteca_Serenisima_100g.webp",
+    "fecha_creacion": "2026-04-14T19:32:31.180Z",
+    "categoria": 1,
+    "proveedor": 1,
+    "estanteria": 2,
+    "nivel_especifico": 1
+  }
+}
