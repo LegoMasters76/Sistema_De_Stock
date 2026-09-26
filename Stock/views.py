@@ -4,20 +4,20 @@ from .models import Categoria, Proveedor, Producto, MovimientosStock, Estanteria
 from .forms import ProductoForm, ProveedorForm, CategoriaForm 
 from django.contrib import messages
 import json
-from django.views.generic import TemplateView, DetailView
+from django.views.generic import DetailView
 from django.db.models import F
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.decorators import user_passes_test
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.contrib.auth.decorators import login_required, permission_required
 
-staff_required = user_passes_test(lambda user: user.is_authenticated and user.is_staff)
-
-class ProductoDetalle(LoginRequiredMixin, DetailView):
+class ProductoDetalle(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     model = Producto
     template_name = "Stock/producto_detalle.html"
     context_object_name = "producto"
+    permission_required = "Stock.view_stock"
+    raise_exception = True
 
 @login_required
+@permission_required("Stock.view_stock", raise_exception=True)
 def index(request):
     productos = Producto.objects.all()
     context = {
@@ -28,6 +28,7 @@ def index(request):
     return render(request, "Stock/index.html", context)
 
 @login_required
+@permission_required("Stock.view_stock", raise_exception=True)
 def stock(request):
     productos = Producto.objects.all()
     nombre = request.GET.get("nombre")
@@ -36,7 +37,7 @@ def stock(request):
     return render(request, "Stock/stock.html", {"productos": productos})
 
 @login_required
-@staff_required
+@permission_required("Stock.manage_products", raise_exception=True)
 def agregar_producto(request):
     if request.method == "POST":
         form = ProductoForm(request.POST, request.FILES)
@@ -48,7 +49,7 @@ def agregar_producto(request):
     return render(request, "Stock/agregar_producto.html", {"form": form})
 
 @login_required
-@staff_required
+@permission_required("Stock.manage_products", raise_exception=True)
 def editar_producto(request, id):
     producto = get_object_or_404(Producto, id=id)
     if request.method == "POST":
@@ -61,7 +62,7 @@ def editar_producto(request, id):
     return render(request, "Stock/editar_producto.html", {"form": form})
 
 @login_required
-@staff_required
+@permission_required("Stock.manage_products", raise_exception=True)
 def eliminar_producto(request, id):
     if request.method != 'POST':
         return JsonResponse({"error": "Método no permitido."}, status=405)
@@ -71,7 +72,7 @@ def eliminar_producto(request, id):
     return redirect('stock')
 
 @login_required
-@staff_required
+@permission_required("Stock.manage_products", raise_exception=True)
 def agregar_categoria(request):
     if request.method == "POST":
         form = CategoriaForm(request.POST)
@@ -83,7 +84,7 @@ def agregar_categoria(request):
     return render(request, "Stock/agregar_categoria.html", {"form": form})
 
 @login_required
-@staff_required
+@permission_required("Stock.manage_products", raise_exception=True)
 def agregar_proveedor(request):
     if request.method == "POST":
         form = ProveedorForm(request.POST)
@@ -95,6 +96,7 @@ def agregar_proveedor(request):
     return render(request, "Stock/agregar_proveedor.html", {"form": form})
 
 @login_required
+@permission_required("Stock.view_warehouse", raise_exception=True)
 def mapa_stock(request):
     estanterias_qs = Estanteria.objects.all()
     config = ConfiguracionDeposito.objects.first()
@@ -111,13 +113,13 @@ def mapa_stock(request):
         })
     
     context = {
-        "estanterias_json": json.dumps(estanterias_data),
+        "estanterias_json": estanterias_data,
         "config": config
     }
     return render(request, "Stock/mapa_stock.html", context)
 
 @login_required
-@staff_required
+@permission_required("Stock.manage_warehouse", raise_exception=True)
 def guardar_estanteria(request):
     if request.method == "POST":
         try:
@@ -159,7 +161,7 @@ def guardar_estanteria(request):
     return JsonResponse({"status": "error", "message": "Método no permitido"}, status=405)
 
 @login_required
-@staff_required
+@permission_required("Stock.manage_warehouse", raise_exception=True)
 def configurar_limites(request):
     config, created = ConfiguracionDeposito.objects.get_or_create(id=1)
     if request.method == "POST":
@@ -193,6 +195,7 @@ def configurar_limites(request):
     return render(request, "Stock/dibujar_mapa.html", {"config": config})
 
 @login_required
+@permission_required("Stock.view_stock", raise_exception=True)
 def buscar_producto(request):
     resultados = []
     nombre_buscado = request.GET.get("nombre")
@@ -201,6 +204,7 @@ def buscar_producto(request):
     return render(request, "Stock/buscar_producto.html", {"resultados": resultados})
 
 @login_required
+@permission_required("Stock.view_warehouse", raise_exception=True)
 def productos_por_estante(request, id):
     estante = get_object_or_404(Estanteria, id=id)
     productos = estante.productos.all().values('nombre', 'stock', 'nivel_especifico')

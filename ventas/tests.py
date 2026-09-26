@@ -2,10 +2,13 @@ from decimal import Decimal
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from Stock.models import Categoria, MovimientosStock, Producto
+from main.models import Empresa
+from main.tenancy import reset_current_tenant, set_current_tenant
 from .models import Cliente, Detalle_venta, Venta
 
 
@@ -18,13 +21,26 @@ MIDDLEWARE_SIN_LICENCIA = [
 @override_settings(MIDDLEWARE=MIDDLEWARE_SIN_LICENCIA)
 class VentaStockTests(TestCase):
 	def setUp(self):
+		self.empresa = Empresa.objects.create(nombre='Empresa de prueba', slug='empresa-prueba')
+		self.tenant_token = set_current_tenant(self.empresa)
 		User = get_user_model()
-		self.usuario = User.objects.create_user(username='vendedor', password='clave-segura')
+		self.usuario = User.objects.create_user(
+			username='vendedor', password='clave-segura', empresa=self.empresa,
+		)
+		self.usuario.groups.add(Group.objects.get(name='Vendedor'))
+		self.otro_vendedor = User.objects.create_user(
+			username='otro-vendedor', password='clave-segura', empresa=self.empresa,
+		)
+		self.otro_vendedor.groups.add(Group.objects.get(name='Vendedor'))
 		self.cliente = Cliente.objects.create(nombre='Cliente de prueba')
 		categoria = Categoria.objects.create(nombre='General')
 		self.producto = Producto.objects.create(
 			nombre='Producto de prueba', precio=Decimal('12.50'), stock=5, categoria=categoria,
 		)
+
+	def tearDown(self):
+		reset_current_tenant(self.tenant_token)
+		super().tearDown()
 
 	def datos_venta(self, cantidad, precio='999.99', cantidad_lineas=1):
 		datos = {
@@ -53,9 +69,13 @@ class VentaStockTests(TestCase):
 
 	def test_venta_consolida_lineas_usa_precio_servidor_y_crea_movimiento(self):
 		self.client.force_login(self.usuario)
-		response = self.client.post(
-			reverse('ventas:venta_create'), self.datos_venta(2, cantidad_lineas=2),
-		)
+		token = set_current_tenant(None)
+		try:
+			response = self.client.post(
+				reverse('ventas:venta_create'), self.datos_venta(2, cantidad_lineas=2),
+			)
+		finally:
+			reset_current_tenant(token)
 
 		self.assertEqual(response.status_code, 302)
 		venta = Venta.objects.get()
@@ -74,7 +94,32 @@ class VentaStockTests(TestCase):
 	def test_usuario_no_staff_no_puede_crear_producto(self):
 		self.client.force_login(self.usuario)
 		response = self.client.get(reverse('agregar_producto'))
+		self.assertEqual(response.status_code, 403)
+
+	def test_vendedor_solo_ve_sus_ventas(self):
+		venta_propia = Venta.objects.create(cliente=self.cliente, vendedor=self.usuario)
+		venta_ajena = Venta.objects.create(cliente=self.cliente, vendedor=self.otro_vendedor)
+		self.client.force_login(self.usuario)
+
+		response = self.client.get(reverse('ventas:venta_list'))
+
+		self.assertEqual(response.status_code, 200)
+		self.assertContains(response, f'#{venta_propia.pk}')
+		self.assertNotContains(response, f'#{venta_ajena.pk}')
+
+	def test_api_clientes_requiere_autenticacion(self):
+		response = self.client.get(reverse('ventas:clientes_api'))
 		self.assertEqual(response.status_code, 302)
+
+	def test_api_clientes_requiere_permiso(self):
+		usuario_sin_rol = get_user_model().objects.create_user(
+			username='sin-rol', password='clave-segura', empresa=self.empresa,
+		)
+		self.client.force_login(usuario_sin_rol)
+
+		response = self.client.get(reverse('ventas:clientes_api'))
+
+		self.assertEqual(response.status_code, 403)
 
 	def test_listado_filtra_por_cliente_y_producto(self):
 		self.client.force_login(self.usuario)
@@ -87,6 +132,40 @@ class VentaStockTests(TestCase):
 
 		self.assertEqual(response.status_code, 200)
 		self.assertContains(response, f'#{venta.pk}')
+
+	def test_manager_aisla_datos_de_otras_empresas(self):
+		otra_empresa = Empresa.objects.create(nombre='Otra empresa', slug='otra-empresa')
+		otro_token = set_current_tenant(otra_empresa)
+		try:
+			otro_cliente = Cliente.objects.create(nombre='Cliente ajeno')
+			self.assertEqual(Cliente.objects.count(), 1)
+			self.assertEqual(Cliente.objects.get().pk, otro_cliente.pk)
+		finally:
+			reset_current_tenant(otro_token)
+
+		self.assertEqual(Cliente.objects.count(), 1)
+		self.assertEqual(Cliente.objects.get().pk, self.cliente.pk)
+
+	def test_manager_sin_tenant_no_expone_registros(self):
+		token = set_current_tenant(None)
+		try:
+			self.assertEqual(Cliente.objects.count(), 0)
+			self.assertEqual(Producto.objects.count(), 0)
+		finally:
+			reset_current_tenant(token)
+
+	def test_no_se_puede_asociar_cliente_de_otra_empresa(self):
+		from django.core.exceptions import ValidationError
+
+		otra_empresa = Empresa.objects.create(nombre='Otra empresa', slug='otra-empresa')
+		otro_token = set_current_tenant(otra_empresa)
+		try:
+			cliente_ajeno = Cliente.objects.create(nombre='Cliente ajeno')
+		finally:
+			reset_current_tenant(otro_token)
+
+		with self.assertRaises(ValidationError):
+			Venta.objects.create(cliente=cliente_ajeno, vendedor=self.usuario)
 
 	def test_listado_rechaza_producto_invalido_sin_error_500(self):
 		self.client.force_login(self.usuario)

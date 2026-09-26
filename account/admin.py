@@ -8,11 +8,11 @@ class PerfilAdmin(UserAdmin):
     # Personalizamos los campos que se ven en el Admin
     fieldsets = UserAdmin.fieldsets + (
         ('Información Extra', {
-            'fields': ('avatar', 'bio', 'pais', 'dni', 'direccion', 'nro_usuario'),
+            'fields': ('empresa', 'avatar', 'bio', 'pais', 'dni', 'direccion', 'nro_usuario'),
         }),
     )
     add_fieldsets = UserAdmin.add_fieldsets + (
         ('Información Extra', {
-            'fields': ('avatar', 'bio', 'pais', 'dni', 'direccion', 'nro_usuario'),
+            'fields': ('empresa', 'avatar', 'bio', 'pais', 'dni', 'direccion', 'nro_usuario'),
         }),
     )

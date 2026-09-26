@@ -2,6 +2,8 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Q
 from django_ckeditor_5.fields import CKEditor5Field
+from simple_history.models import HistoricalRecords
+from main.tenancy import TenantModel
 
 class ConfiguracionDeposito(models.Model):
     nombre = models.CharField(max_length=100, default="Depósito Principal")
@@ -44,10 +46,16 @@ class Estanteria(models.Model):
     niveles = models.IntegerField(default=1)
     altura_m = models.DecimalField(max_digits=5, decimal_places=2, blank=True, null=True)
 
+    class Meta:
+        permissions = [
+            ("view_warehouse", "Can view warehouse layout"),
+            ("manage_warehouse", "Can manage warehouse layout"),
+        ]
+
     def __str__(self):
         return f"Estante {self.nombre}"
 
-class Producto(models.Model):
+class Producto(TenantModel):
     nombre = models.CharField(max_length=100)
     descripcion = CKEditor5Field("Descripción", config_name="default", blank=True, null=True)
     precio = models.DecimalField(max_digits=10, decimal_places=2)
@@ -65,8 +73,13 @@ class Producto(models.Model):
         related_name="productos"
     )
     nivel_especifico = models.IntegerField(null=True, blank=True)
+    history = HistoricalRecords(inherit=True)
 
     class Meta:
+        permissions = [
+            ("view_stock", "Can view stock information"),
+            ("manage_products", "Can manage products, categories, and suppliers"),
+        ]
         constraints = [
             models.CheckConstraint(condition=Q(stock__gte=0), name='producto_stock_no_negativo'),
         ]
@@ -74,7 +87,7 @@ class Producto(models.Model):
     def __str__(self):
         return self.nombre
 
-class MovimientosStock(models.Model):
+class MovimientosStock(TenantModel):
     TIPO_MOVIMIENTO = [
         ("VENTA", "Venta"),
         ("ENTRADA", "Entrada"),
@@ -90,6 +103,7 @@ class MovimientosStock(models.Model):
     saldo_resultante = models.PositiveIntegerField(null=True, blank=True)
     usuario = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT)
     referencia = models.CharField(max_length=100, blank=True)
+    history = HistoricalRecords(inherit=True)
 
     class Meta:
         verbose_name = "Movimiento de Stock"

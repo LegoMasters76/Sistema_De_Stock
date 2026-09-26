@@ -1,34 +1,39 @@
 from django.shortcuts import render, redirect
 from django.urls import reverse_lazy
 from django.views.generic import ListView, DetailView, CreateView
-from django.contrib.auth.mixins import LoginRequiredMixin
-from django.db import transaction
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 from django.contrib import messages
 from django.http import JsonResponse
 from .models import Venta, Detalle_venta, Cliente
 from .forms import VentaForm, DetalleVentaFormSet, ClienteForm
-from Stock.models import Producto, MovimientosStock
-import json
+from Stock.models import Producto
+from Stock.services import InventoryValidationError, procesar_venta
 
-class ClienteCreateView(LoginRequiredMixin, CreateView):
+class ClienteCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = Cliente
     form_class = ClienteForm
     template_name = 'ventas/agregar_cliente.html'
     success_url = reverse_lazy('ventas:venta_create')
+    permission_required = 'ventas.manage_clients'
+    raise_exception = True
     
     def form_valid(self, form):
         messages.success(self.request, "Cliente registrado exitosamente.")
         return super().form_valid(form)
 
-class VentaListView(LoginRequiredMixin, ListView):
+class VentaListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = Venta
     template_name = 'ventas/venta_list.html'
     context_object_name = 'ventas'
     ordering = ['-fecha']
     paginate_by = 10
+    permission_required = 'ventas.view_sales'
+    raise_exception = True
 
     def get_queryset(self):
         queryset = super().get_queryset().select_related('cliente', 'vendedor').prefetch_related('detalles__producto')
+        if not self.request.user.has_perm('ventas.view_all_sales'):
+            queryset = queryset.filter(vendedor=self.request.user)
         dia = self.request.GET.get('dia')
         hora = self.request.GET.get('hora')
         producto_id = self.request.GET.get('producto')
@@ -79,19 +84,26 @@ class VentaListView(LoginRequiredMixin, ListView):
         context['cliente_filter'] = self.request.GET.get('cliente', '')
         return context
 
-class VentaDetailView(LoginRequiredMixin, DetailView):
+class VentaDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     model = Venta
     template_name = 'ventas/venta_detail.html'
     context_object_name = 'venta'
+    permission_required = 'ventas.view_sales'
+    raise_exception = True
 
     def get_queryset(self):
-        return super().get_queryset().select_related('cliente', 'vendedor').prefetch_related('detalles__producto')
+        queryset = super().get_queryset().select_related('cliente', 'vendedor').prefetch_related('detalles__producto')
+        if not self.request.user.has_perm('ventas.view_all_sales'):
+            queryset = queryset.filter(vendedor=self.request.user)
+        return queryset
 
-class VentaCreateView(LoginRequiredMixin, CreateView):
+class VentaCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = Venta
     form_class = VentaForm
     template_name = 'ventas/venta_form.html'
     success_url = reverse_lazy('ventas:venta_list')
+    permission_required = 'ventas.create_sales'
+    raise_exception = True
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
@@ -102,7 +114,7 @@ class VentaCreateView(LoginRequiredMixin, CreateView):
         
         productos = Producto.objects.all()
         productos_info = {p.id: {'precio': float(p.precio), 'stock': p.stock} for p in productos}
-        data['productos_info'] = json.dumps(productos_info)
+        data['productos_info'] = productos_info
         return data
 
     def form_valid(self, form):
@@ -110,62 +122,30 @@ class VentaCreateView(LoginRequiredMixin, CreateView):
         detalles = context['detalles']
         if not detalles.is_valid():
             return self.render_to_response(context)
+        lineas = [
+            detalle_form.cleaned_data
+            for detalle_form in detalles
+            if detalle_form.cleaned_data and not detalle_form.cleaned_data.get('DELETE', False)
+        ]
+        try:
+            self.object = procesar_venta(
+                cliente=form.cleaned_data['cliente_seleccion'],
+                vendedor=self.request.user,
+                telefono=form.cleaned_data.get('telefono', ''),
+                email=form.cleaned_data.get('email', ''),
+                detalles=lineas,
+            )
+        except InventoryValidationError as error:
+            form.add_error(None, str(error))
+            return self.render_to_response(context)
 
-        with transaction.atomic():
-            cantidades = {}
-            for detalle_form in detalles:
-                if detalle_form.cleaned_data and not detalle_form.cleaned_data.get('DELETE', False):
-                    producto_id = detalle_form.cleaned_data.get('producto').pk
-                    cantidades[producto_id] = cantidades.get(producto_id, 0) + detalle_form.cleaned_data.get('cantidad', 0)
+        messages.success(self.request, "Venta registrada exitosamente.")
+        return redirect(self.get_success_url())
 
-            if not cantidades:
-                form.add_error(None, 'La venta debe contener al menos un producto.')
-                return self.render_to_response(context)
-
-            productos = {
-                producto.pk: producto
-                for producto in Producto.objects.select_for_update().filter(pk__in=cantidades)
-            }
-            for producto_id, cantidad in cantidades.items():
-                producto = productos.get(producto_id)
-                if producto is None or cantidad > producto.stock:
-                    nombre = producto.nombre if producto else f'#{producto_id}'
-                    disponible = producto.stock if producto else 0
-                    messages.error(self.request, f"Sin stock suficiente para '{nombre}'. Solicitas {cantidad}, pero quedan {disponible}.")
-                    return self.render_to_response(context)
-
-            form.instance.vendedor = self.request.user
-            self.object = form.save()
-            total_venta = 0
-            for producto_id, cantidad in cantidades.items():
-                producto = productos[producto_id]
-                precio = producto.precio
-                producto.stock -= cantidad
-                producto.save(update_fields=['stock'])
-                Detalle_venta.objects.create(
-                    venta=self.object,
-                    producto=producto,
-                    cantidad=cantidad,
-                    precio_unitario=precio,
-                )
-                total_venta += cantidad * precio
-                MovimientosStock.objects.create(
-                    producto=producto,
-                    tipo='VENTA',
-                    cantidad=cantidad,
-                    saldo_resultante=producto.stock,
-                    usuario=self.request.user,
-                    referencia=f'Venta #{self.object.pk}',
-                )
-
-            self.object.total = total_venta
-            self.object.save()
-            messages.success(self.request, "Venta registrada exitosamente.")
-            return super().form_valid(form)
-
-from django.contrib.auth.decorators import login_required
+from django.contrib.auth.decorators import login_required, permission_required
 
 @login_required
+@permission_required('ventas.access_customer_api', raise_exception=True)
 def clientes_api(request):
     clientes = Cliente.objects.values('id', 'telefono', 'email')
     clientes_dict = {

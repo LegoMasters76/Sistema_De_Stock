@@ -5,6 +5,11 @@ def avatar_upload_to(instance, filename):
     return f"avatars/{instance.username}/{filename}"
 
 class Perfil(AbstractUser):
+    empresa = models.ForeignKey(
+        "main.Empresa",
+        on_delete=models.PROTECT,
+        related_name="usuarios",
+    )
     avatar = models.ImageField(
         upload_to=avatar_upload_to,
         default="default/default.png",

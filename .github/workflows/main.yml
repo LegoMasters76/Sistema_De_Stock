@@ -1,0 +1,63 @@
+name: Django CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: django-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-deploy-check:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: stockpro
+          POSTGRES_USER: stockpro
+          POSTGRES_PASSWORD: ci-stockpro-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U stockpro -d stockpro"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-prod.txt
+
+      - name: Install production dependencies
+        run: python -m pip install -r requirements-prod.txt
+
+      - name: Run automated tests
+        env:
+          DJANGO_ENV: local
+          DJANGO_DEBUG: "true"
+          DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
+          DATABASE_URL: postgresql://stockpro:ci-stockpro-password@127.0.0.1:5432/stockpro
+        run: python manage.py test --verbosity 2
+
+      - name: Check production deployment settings
+        env:
+          DJANGO_ENV: production
+          DJANGO_SECRET_KEY: ci-only-secret-key-which-is-long-enough-for-django-deployment-checks
+          DJANGO_ALLOWED_HOSTS: stock.example.com
+          DJANGO_CSRF_TRUSTED_ORIGINS: https://stock.example.com
+          DJANGO_SECURE_SSL_REDIRECT: "true"
+          DATABASE_URL: postgresql://stockpro:ci-stockpro-password@127.0.0.1:5432/stockpro
+        run: python manage.py check --deploy --fail-level WARNING

@@ -104,8 +104,10 @@
     .errorlist { color: #dc3545; list-style: none; padding: 0; margin-top: 5px; font-size: 0.875em; }
 </style>
 
+{{ productos_info|json_script:"productos-info-data" }}
+
 <script>
-    const productosInfo = {{ productos_info|safe }};
+    const productosInfo = JSON.parse(document.getElementById('productos-info-data').textContent);
     let clientesData = {};
     
     document.addEventListener('DOMContentLoaded', function() {

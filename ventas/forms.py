@@ -1,5 +1,6 @@
 from django import forms
 from django.forms import inlineformset_factory
+from Stock.models import Producto
 from .models import Venta, Detalle_venta, Cliente
 
 class ClienteForm(forms.ModelForm):
@@ -14,7 +15,7 @@ class ClienteForm(forms.ModelForm):
 
 class VentaForm(forms.ModelForm):
     cliente_seleccion = forms.ModelChoiceField(
-        queryset=Cliente.objects.all(),
+        queryset=Cliente.objects.none(),
         widget=forms.Select(attrs={'class': 'form-select', 'id': 'cliente-select'}),
         label="Cliente *",
         empty_label="--- Seleccione un Cliente ---"
@@ -27,6 +28,10 @@ class VentaForm(forms.ModelForm):
             'telefono': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Teléfono'}),
             'email': forms.EmailInput(attrs={'class': 'form-control', 'placeholder': 'Email'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['cliente_seleccion'].queryset = Cliente.objects.all()
         
     def save(self, commit=True):
         instance = super().save(commit=False)
@@ -37,15 +42,25 @@ class VentaForm(forms.ModelForm):
             instance.save()
         return instance
 
+class DetalleVentaForm(forms.ModelForm):
+    class Meta:
+        model = Detalle_venta
+        fields = ['producto', 'cantidad', 'precio_unitario']
+        widgets = {
+            'producto': forms.Select(attrs={'class': 'form-select producto-select', 'required': True}),
+            'cantidad': forms.NumberInput(attrs={'class': 'form-control cantidad-input', 'min': 1, 'required': True}),
+            'precio_unitario': forms.NumberInput(attrs={'class': 'form-control precio-input', 'step': '0.01', 'required': True}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['producto'].queryset = Producto.objects.all()
+
 DetalleVentaFormSet = inlineformset_factory(
     Venta, 
     Detalle_venta, 
     fields=['producto', 'cantidad', 'precio_unitario'],
+    form=DetalleVentaForm,
     extra=1,
     can_delete=True,
-    widgets={
-        'producto': forms.Select(attrs={'class': 'form-select producto-select', 'required': True}),
-        'cantidad': forms.NumberInput(attrs={'class': 'form-control cantidad-input', 'min': 1, 'required': True}),
-        'precio_unitario': forms.NumberInput(attrs={'class': 'form-control precio-input', 'step': '0.01', 'required': True}),
-    }
 )

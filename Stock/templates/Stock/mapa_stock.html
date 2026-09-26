@@ -154,6 +154,8 @@
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
 {{ config.contorno|default:"[]"|json_script:"contorno-data" }}
 
+{{ estanterias_json|json_script:"estanterias-data" }}
+
 <script>
 // --- VARIABLES GLOBALES ---
 let stage, layer, tr, suelo;
@@ -398,7 +400,7 @@ function guardarTodo() {
 }
 
 function cargarEstanterias() {
-    const iniciales = {{ estanterias_json|safe|default:"[]" }}; 
+    const iniciales = JSON.parse(document.getElementById('estanterias-data').textContent);
     if (iniciales && iniciales.length > 0) {
         iniciales.forEach(e => dibujarEstanteria(e));
     }

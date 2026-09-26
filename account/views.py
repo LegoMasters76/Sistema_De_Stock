@@ -3,6 +3,7 @@ from django.urls import reverse_lazy
 from django.views.generic import CreateView, UpdateView, DetailView
 from django.contrib.auth.views import LoginView, LogoutView, PasswordChangeView
 from django.contrib.auth.mixins import LoginRequiredMixin
+from django.contrib.auth.models import Group
 from .models import Perfil
 from .forms import PerfilRegistroForm, PerfilEdicionForm
 
@@ -12,6 +13,13 @@ class RegistroUsuario(CreateView):
     form_class = PerfilRegistroForm
     template_name = 'account/registro.html'
     success_url = reverse_lazy('login')
+
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        vendedor = Group.objects.filter(name="Vendedor").first()
+        if vendedor:
+            self.object.groups.add(vendedor)
+        return response
 
 # 2. LOGIN (CBV)
 class LoginUsuario(LoginView):
